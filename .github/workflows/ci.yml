@@ -1,0 +1,88 @@
+name: الفحوص
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # قاعدة البيانات: الحراسة تُجرَّب بانتحال كل دور فعلياً على Postgres حقيقيّ
+  # ---------------------------------------------------------------------------
+  database:
+    name: الحراسة والصلاحيات
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: muallim_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports: ["5432:5432"]
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/muallim_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: الفحوص على قاعدة حقيقية
+        run: ./db/test/run.sh
+
+      # ⚠️ لا يكفي أن تكون المجموعة خضراء. هذه الخطوة تُعيد إدخال خمسة أخطاء
+      #    وقع مثلها فعلاً، وتشترط أن ترسب المجموعة في كل مرّة. فحصٌ لا يرسب
+      #    أبداً لا قيمة لنجاحه.
+      - name: إثبات أنّ الفحوص ليست عمياء
+        run: ./db/test/negative-control.sh
+
+  # ---------------------------------------------------------------------------
+  # الواجهة
+  # ---------------------------------------------------------------------------
+  app:
+    name: الواجهة والبناء
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+        working-directory: app
+
+      - name: فحص الأنواع
+        run: npx tsc --noEmit
+        working-directory: app
+
+      - name: فحوص الوحدات
+        run: npx vitest run
+        working-directory: app
+
+      - name: البناء
+        run: npx vite build
+        working-directory: app
+
+      # يُشغَّل بعد البناء: فحص الإيموجي يقرأ الحزمة المنشورة لا المصدر
+      - name: فحوص الاتّفاقيات (مع تحقّقها من نفسها)
+        run: node scripts/check-conventions.mjs --self-test
+
+  # ---------------------------------------------------------------------------
+  # الهوية البصرية: الوضوح يُقاس لا يُقدَّر
+  # ---------------------------------------------------------------------------
+  design:
+    name: قياس التباين
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: قياس كل نصٍّ مقابل خلفيته
+        run: node scripts/check-contrast.mjs --self-test

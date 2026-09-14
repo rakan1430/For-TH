@@ -1,0 +1,13 @@
+{
+  "name": "muallim-platform",
+  "private": true,
+  "description": "منصّة أ. ‹اسم المعلّم› — القدرات الكمّي والتحصيلي",
+  "scripts": {
+    "check:design": "node scripts/check-contrast.mjs --self-test",
+    "check:conventions": "node scripts/check-conventions.mjs --self-test",
+    "check:db": "./db/test/run.sh",
+    "check:db:blind": "./db/test/negative-control.sh",
+    "check:app": "cd app && npx tsc --noEmit && npx vitest run && npx vite build",
+    "check": "npm run check:design && npm run check:app && npm run check:conventions && npm run check:db && npm run check:db:blind"
+  }
+}

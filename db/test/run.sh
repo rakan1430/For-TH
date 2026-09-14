@@ -74,7 +74,9 @@ psql_cmd() {
   fi
 }
 
-log "١) تهيئة ما يوفّره Supabase (أدوار، مخطّط auth، أدوات الفحص)"
+log "١) تصفير القاعدة ثم تهيئة ما يوفّره Supabase"
+# التصفير أوّلاً: يبدأ كل تشغيلٍ من لا شيء، فلا ينجح فحصٌ ببقايا سابقة
+psql_run db/local/reset.sql
 psql_run db/local/bootstrap.sql
 
 log "٢) تطبيق المهاجرات بالترتيب"
