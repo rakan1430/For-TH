@@ -1,0 +1,46 @@
+# =============================================================================
+# القائمة البيضاء: من يستطيع تنفيذ ماذا
+#
+# كل سطرٍ هنا صلاحيةُ تنفيذٍ **مقصودة** بصيغة:
+#     التوقيع|الدور|نوع الصلاحية
+#
+# ⚠️ ما ليس هنا ولا في القاعدة: صحيح.
+# ⚠️ ما هنا وليس في القاعدة: صلاحيةٌ سقطت — انكسرت الواجهة على الأرجح.
+# ⚠️ ما في القاعدة وليس هنا: **ثغرةٌ حتى يُثبت العكس**. وإن كان الدور فيه
+#    `PUBLIC` فهي الثغرة بعينها التي وقعت في المشروع السابق: زائرٌ مجهول
+#    يستدعي دالّةً بصلاحية عالية عبر الشبكة، فيقرأ ما تحرسه السياسات، دون
+#    أن يلمس الجدول أصلاً.
+#
+# ولاحظ الغائبين، فغيابهم مقصود بقدر حضور الحاضرين:
+#   · `anon` لا يملك تنفيذ أي دالّة — صفحة الأسعار تُقرأ بسياسة جدول لا بدالّة.
+#   · دوالّ `private` لا تُذكر — تستدعيها دوالُّ `public` من الداخل بصلاحية
+#     مالكها، ولا مسار شبكة يبلغها.
+#   · لا سطر واحد فيه `PUBLIC`.
+# =============================================================================
+
+# ── محمولات الحراسة: تستدعيها سياسات الصفوف نفسها ─────────────────────────
+# وكلّها تسأل عن المستدعي وحده ولا تقبل معرّف شخصٍ آخر، فلا تصلح للاستكشاف.
+is_teacher()|authenticated|definer
+has_active_subscription(track_t)|authenticated|definer
+is_assigned(item_type_t,uuid)|authenticated|definer
+
+# ── نافذة الهوية للعمليات الخطرة ──────────────────────────────────────────
+confirm_identity()|authenticated|definer
+
+# ── الاشتراك ──────────────────────────────────────────────────────────────
+request_subscription(track_t,uuid,text,text,text,pay_method_t,text)|authenticated|definer
+decide_subscription_request(uuid,boolean,date,integer,text)|authenticated|definer
+
+# ── المحتوى والتوزيع (تفحص `is_teacher()` في أوّل سطرٍ منها) ───────────────
+assign_items(item_type_t,uuid[],audience_t,uuid[],uuid[])|authenticated|definer
+reorder_bank_items(uuid,jsonb)|authenticated|definer
+
+# ── الاختبارات ────────────────────────────────────────────────────────────
+# `set_answer_key` يكتب المفتاح ولا يقرأه. ولا دالّةَ قراءةٍ له إطلاقاً.
+set_answer_key(uuid,uuid[])|authenticated|definer
+start_attempt(uuid)|authenticated|definer
+save_answer(uuid,uuid,uuid)|authenticated|definer
+submit_attempt(uuid,jsonb)|authenticated|definer
+
+# ── اللوحة ────────────────────────────────────────────────────────────────
+teacher_overview()|authenticated|definer
