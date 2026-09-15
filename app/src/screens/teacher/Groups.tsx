@@ -166,7 +166,10 @@ function GroupCard({ group, api, students, isOpen, onToggle, onAct }: {
               </select>
             </Field>
             <span className="subtle">
-              {countLabel(members.length, "لا أعضاء", "عضوٌ واحد", "عضوان", "أعضاء")} مختارون
+              {countLabel(members.length, {
+                none: "لا أعضاء", one: "عضوٌ واحد", two: "عضوان",
+                few: "أعضاء", many: "عضواً",
+              })} مختارون
             </span>
             <button type="button" className="btn btn--sm" disabled={busy}
                     onClick={async () => {

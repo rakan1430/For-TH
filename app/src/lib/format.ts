@@ -109,10 +109,27 @@ export function formatPercent(score: number | null, max: number | null): string 
   return `${Math.round((score / max) * 100)}٪`;
 }
 
-/** عدّ عربيّ سليم: «لا بنوك» و«بنك واحد» و«بنكان» و«٣ بنوك». */
-export function countLabel(n: number, none: string, one: string, two: string, many: string): string {
-  if (n === 0) return none;
-  if (n === 1) return one;
-  if (n === 2) return two;
-  return `${n} ${many}`;
+/**
+ * عدّ عربيّ سليم.
+ *
+ * ⚠️ العربية لا تكتفي بمفرد وجمع كالإنجليزية، ولها **خمس** حالات:
+ *      ٠ لا شيء · ١ مفرد · ٢ مثنّى · ٣–١٠ جمع قلّة · ١١+ مفرد منصوب
+ *
+ *    فـ«١٨ أيام» خطأ، وصوابه «١٨ يوماً». وهذا يظهر في أوّل سطرٍ يراه الطالب
+ *    على شاشته («يبقى ١٨ يوماً»)، فليس تفصيلاً لغوياً يُتساهل فيه.
+ */
+export interface CountForms {
+  none: string;   // ٠
+  one: string;    // ١
+  two: string;    // ٢
+  few: string;    // ٣–١٠ — جمع قلّة: «٥ أيام»
+  many: string;   // ١١+ — مفرد منصوب: «١٨ يوماً»
+}
+
+export function countLabel(n: number, forms: CountForms): string {
+  if (n <= 0) return forms.none;
+  if (n === 1) return forms.one;
+  if (n === 2) return forms.two;
+  if (n <= 10) return `${n} ${forms.few}`;
+  return `${n} ${forms.many}`;
 }

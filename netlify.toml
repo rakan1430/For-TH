@@ -1,0 +1,17 @@
+# إعداد الاستضافة.
+#
+# ⚠️ ترويسات الأمان في `app/public/_headers` لا هنا، لأنّ `frame-ancestors`
+#    لا تعمل إلّا ترويسةً حقيقية — انظر التعليق هناك.
+[build]
+  base    = "app"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# تطبيق صفحة واحدة: كل مسارٍ يعود إلى `index.html`، والتوجيه بالشذرة بعدها.
+[[redirects]]
+  from = "/*"
+  to   = "/index.html"
+  status = 200

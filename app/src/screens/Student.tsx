@@ -63,7 +63,10 @@ export function Student({ subs, track, onTrack }: {
           <span className={left <= 7 ? "tag tag--pen" : "tag"}>
             <Icon name="clock" size={16} />
             {left >= 0
-              ? `ينتهي ${formatDate(sub.ends_on)} — ${countLabel(left, "اليوم", "يوم واحد", "يومان", "أيام")}`
+              ? `ينتهي ${formatDate(sub.ends_on)} — ${countLabel(left, {
+                  none: "ينتهي اليوم", one: "يبقى يوم واحد", two: "يبقى يومان",
+                  few: "أيام", many: "يوماً",
+                })}`
               : `انتهى ${formatDate(sub.ends_on)}`}
           </span>
         ) : null}

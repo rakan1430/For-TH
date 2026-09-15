@@ -378,38 +378,36 @@ function ResourceRow({ resource, api, onAct }: {
 }) {
   const icon = resource.kind === "link" ? "link" : resource.kind === "image" ? "image" : "file";
   return (
-    <div className="card stack-s" style={{ background: "var(--bg)" }}>
-      <div className="row-between">
-        <span className="row" style={{ flexWrap: "nowrap" }}>
-          <DragHandle api={api} title={resource.title} />
-          <Icon name={icon} />
-          <input className="input" style={{ minWidth: "160px" }} defaultValue={resource.title}
-                 aria-label={`عنوان ${resource.title}`}
-                 onBlur={(e) => {
-                   if (e.target.value.trim() && e.target.value !== resource.title) {
-                     void onAct(() => A.updateResource(resource.id, { title: e.target.value.trim() }));
-                   }
-                 }} />
-        </span>
-      </div>
-      <div className="row">
-        {resource.is_published
-          ? <span className="tag tag--ok">منشور</span>
-          : <span className="tag tag--muted">مسودّة</span>}
-        <button type="button" className="btn btn--quiet btn--sm"
-                onClick={() => void onAct(
-                  () => A.updateResource(resource.id, { is_published: !resource.is_published })
-                )}>
-          <Icon name={resource.is_published ? "eyeOff" : "eye"} size={16} />
-          {resource.is_published ? "إلغاء النشر" : "نشر"}
-        </button>
-        <PreviewButton resource={resource} />
-        <button type="button" className="btn btn--quiet btn--sm"
-                aria-label={`حذف ${resource.title}`}
-                onClick={() => void onAct(() => A.deleteResource(resource))}>
-          <Icon name="trash" size={16} />
-        </button>
-      </div>
+    /* ⚠️ سطرٌ واحد يلتفّ عند الضيق، لا `row-between` بطرفٍ واحد — فذلك يترك
+          فراغاً واسعاً على اليسار يبدو كأنّ شيئاً لم يُرسم. */
+    <div className="card row" style={{ background: "var(--bg)", gap: "var(--u-half)" }}>
+      <DragHandle api={api} title={resource.title} />
+      <Icon name={icon} />
+      <input
+        className="input" style={{ flex: "1 1 180px", minWidth: "140px" }}
+        defaultValue={resource.title} aria-label={`عنوان ${resource.title}`}
+        onBlur={(e) => {
+          if (e.target.value.trim() && e.target.value !== resource.title) {
+            void onAct(() => A.updateResource(resource.id, { title: e.target.value.trim() }));
+          }
+        }}
+      />
+      <button type="button" className="btn btn--quiet btn--sm"
+              aria-label={resource.is_published ? "إلغاء نشر" : "نشر"}
+              title={resource.is_published ? "منشور — اضغط لإلغاء النشر" : "مسودّة — اضغط للنشر"}
+              style={resource.is_published ? { borderColor: "var(--green)", color: "var(--green)" } : undefined}
+              onClick={() => void onAct(
+                () => A.updateResource(resource.id, { is_published: !resource.is_published })
+              )}>
+        <Icon name={resource.is_published ? "eye" : "eyeOff"} size={16} />
+        {resource.is_published ? "منشور" : "مسودّة"}
+      </button>
+      <PreviewButton resource={resource} />
+      <button type="button" className="btn btn--quiet btn--sm"
+              aria-label={`حذف ${resource.title}`}
+              onClick={() => void onAct(() => A.deleteResource(resource))}>
+        <Icon name="trash" size={16} />
+      </button>
     </div>
   );
 }
@@ -439,30 +437,25 @@ function QuizRow({ quiz, api, onAct, onEdit }: {
   onAct: (fn: () => Promise<unknown>, done?: string) => Promise<void>;
 }) {
   return (
-    <div className="card stack-s" style={{ background: "var(--bg)" }}>
-      <div className="row-between">
-        <span className="row" style={{ flexWrap: "nowrap" }}>
-          <DragHandle api={api} title={quiz.title} />
-          <Icon name="quiz" />
-          <strong>{quiz.title}</strong>
-        </span>
-        <span className="tag">
-          {quiz.retention === "permanent" ? "مسجَّل" : "مؤقّت"}
-        </span>
-      </div>
-      <div className="row">
-        {quiz.is_published
-          ? <span className="tag tag--ok">منشور</span>
-          : <span className="tag tag--muted">مسودّة</span>}
-        <button type="button" className="btn btn--sm" onClick={onEdit}>
-          <Icon name="edit" size={16} /> تعديل
-        </button>
-        <button type="button" className="btn btn--quiet btn--sm"
-                aria-label={`حذف ${quiz.title}`}
-                onClick={() => void onAct(() => A.deleteQuiz(quiz.id))}>
-          <Icon name="trash" size={16} />
-        </button>
-      </div>
+    <div className="card row" style={{ background: "var(--bg)", gap: "var(--u-half)" }}>
+      <DragHandle api={api} title={quiz.title} />
+      <Icon name="quiz" />
+      <strong style={{ flex: "1 1 160px", minWidth: "140px" }}>{quiz.title}</strong>
+      <span className="tag">{quiz.retention === "permanent" ? "مسجَّل" : "مؤقّت"}</span>
+      <button type="button" className="btn btn--quiet btn--sm"
+              title={quiz.is_published ? "منشور" : "مسودّة"}
+              style={quiz.is_published ? { borderColor: "var(--green)", color: "var(--green)" } : undefined}>
+        <Icon name={quiz.is_published ? "eye" : "eyeOff"} size={16} />
+        {quiz.is_published ? "منشور" : "مسودّة"}
+      </button>
+      <button type="button" className="btn btn--sm" onClick={onEdit}>
+        <Icon name="edit" size={16} /> تعديل
+      </button>
+      <button type="button" className="btn btn--quiet btn--sm"
+              aria-label={`حذف ${quiz.title}`}
+              onClick={() => void onAct(() => A.deleteQuiz(quiz.id))}>
+        <Icon name="trash" size={16} />
+      </button>
     </div>
   );
 }

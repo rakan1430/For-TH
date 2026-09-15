@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AR_LOCALE, formatDate, formatDateTime, daysUntil, formatPrice, formatScore, formatPercent } from "./format";
+import { AR_LOCALE, formatDate, formatDateTime, daysUntil, formatPrice, formatScore, formatPercent, countLabel } from "./format";
 
 /*
  * فحص التقويم — البند ١٧.
@@ -122,5 +122,39 @@ describe("الدرجات", () => {
   });
   it("وغير المصحّحة «—»", () => {
     expect(formatScore(null, null)).toBe("—");
+  });
+});
+
+/*
+ * قواعد العدد في العربية — خمس حالات لا اثنتان.
+ * «١٨ أيام» خطأ شائع يقع فيه كل من يعامل العربية كالإنجليزية، ويظهر في
+ * أوّل سطرٍ يراه الطالب على شاشته.
+ */
+describe("العدّ العربي", () => {
+  const يوم = {
+    none: "ينتهي اليوم", one: "يبقى يوم واحد", two: "يبقى يومان",
+    few: "أيام", many: "يوماً",
+  };
+
+  it("الصفر صيغةٌ خاصّة لا «٠ أيام»", () => {
+    expect(countLabel(0, يوم)).toBe("ينتهي اليوم");
+  });
+  it("والسالب مثله — اشتراكٌ انتهى لا يقول «‎-٣ أيام»", () => {
+    expect(countLabel(-3, يوم)).toBe("ينتهي اليوم");
+  });
+  it("المفرد بلا رقم", () => {
+    expect(countLabel(1, يوم)).toBe("يبقى يوم واحد");
+  });
+  it("والمثنّى كذلك — لا «٢ أيام»", () => {
+    expect(countLabel(2, يوم)).toBe("يبقى يومان");
+  });
+  it("٣ إلى ١٠: جمع قلّة", () => {
+    expect(countLabel(3, يوم)).toBe("3 أيام");
+    expect(countLabel(10, يوم)).toBe("10 أيام");
+  });
+  it("١١ فأكثر: مفرد منصوب — وهنا يقع الخطأ عادةً", () => {
+    expect(countLabel(11, يوم)).toBe("11 يوماً");
+    expect(countLabel(18, يوم)).toBe("18 يوماً");
+    expect(countLabel(100, يوم)).toBe("100 يوماً");
   });
 });

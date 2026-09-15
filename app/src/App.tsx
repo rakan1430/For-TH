@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { isConfigured, supabase } from "./lib/supabase";
+import { DEMO, isConfigured, supabase } from "./lib/supabase";
 import { amITeacher, activeTracks, mySubscriptions } from "./lib/api";
 import type { Subscription, Track } from "./lib/types";
 import { match, navigate, useRoute } from "./lib/router";
 import { Brand } from "./components/Logo";
 import { Empty, Notice, ThemeToggle } from "./components/ui";
 import { Setup } from "./screens/Setup";
+import { DemoBanner } from "./components/DemoBanner";
 import { Auth } from "./screens/Auth";
 import { Plans } from "./screens/Plans";
 import { Subscribe } from "./screens/Subscribe";
@@ -59,7 +60,7 @@ export default function App() {
   const subMatch = match("/subscribe/:track/:planId", route);
 
   return (
-    <Shell onSignOut={() => void supabase?.auth.signOut()} isTeacher={isTeacher}>
+    <Shell onSignOut={DEMO ? null : () => void supabase?.auth.signOut()} isTeacher={isTeacher}>
       {error ? <Notice kind="error">{error}</Notice> : null}
 
       {route === "/plans" ? <Plans signedIn /> : null}
@@ -118,6 +119,7 @@ function Shell({ children, onSignOut, isTeacher }: {
 }) {
   return (
     <>
+      {DEMO ? <DemoBanner /> : null}
       <header className="appbar">
         <div className="appbar__inner">
           <button type="button" className="tab" onClick={() => navigate("/")}

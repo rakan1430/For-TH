@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { makeDemoClient } from "./demo-client";
 
 /**
  * عميل قاعدة البيانات.
@@ -15,17 +16,29 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
 
-export const isConfigured = Boolean(url && publishableKey);
+/**
+ * وضع العرض — بناءٌ منفصل ببيانات في المتصفّح وحده، لرؤية الشكل قبل أن
+ * يُنشأ مشروع القاعدة.
+ *
+ * ⚠️ لا يُفعَّل إلا بـ`VITE_DEMO=1` **صراحةً عند البناء**. وما دام الرابط
+ *    والمفتاح مضبوطين فالبناء العاديّ يتجاهله تماماً. ويعلن الشريط في أعلى
+ *    الصفحة أنّ البيانات تجريبية، فلا يُظنّ عرضٌ إنتاجاً.
+ */
+export const DEMO = import.meta.env.VITE_DEMO === "1";
+
+export const isConfigured = DEMO || Boolean(url && publishableKey);
 
 /**
  * إن لم يُضبط المشروع بعد، لا نُنشئ عميلاً بقيمٍ وهمية: عميلٌ بعنوانٍ خاطئ
  * يفشل بأخطاء شبكةٍ غامضة تبدو أعطالاً في الشفرة. والفشل الصريح أرحم.
  */
-export const supabase: SupabaseClient | null = isConfigured
-  ? createClient(url!, publishableKey!, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-    })
-  : null;
+export const supabase: SupabaseClient | null = DEMO
+  ? (makeDemoClient() as unknown as SupabaseClient)
+  : isConfigured
+    ? createClient(url!, publishableKey!, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+      })
+    : null;
 
 export function requireClient(): SupabaseClient {
   if (!supabase) {

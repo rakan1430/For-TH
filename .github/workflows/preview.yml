@@ -1,0 +1,58 @@
+name: نسخة العرض
+
+# ⚠️ ما تنشره هذه المهمّة **وضع عرض**: بيانات تجريبية في المتصفّح، بلا قاعدة
+#    بيانات ولا حراسة. غرضه أن يرى المالك الشكل على جهازه قبل أن يُنشأ مشروع
+#    القاعدة. ويعلن الشريط في أعلى الصفحة ذلك بلا التباس.
+on:
+  push:
+    branches: ["claude/new-project-repositories-exeq9g"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+        working-directory: app
+
+      - name: بناء نسخة العرض
+        run: npm run build
+        working-directory: app
+        env:
+          VITE_DEMO: "1"
+          # صفحات GitHub تخدم من مجلّدٍ باسم المستودع لا من الجذر
+          VITE_BASE: "/For-TH/"
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

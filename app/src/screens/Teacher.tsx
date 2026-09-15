@@ -62,7 +62,10 @@ function OverviewPane() {
             <p className="subtle">مشترك باشتراكٍ ساري</p>
             {r.pending_requests > 0 ? (
               <span className="tag tag--pen">
-                {countLabel(r.pending_requests, "", "طلب واحد معلّق", "طلبان معلّقان", "طلبات معلّقة")}
+                {countLabel(r.pending_requests, {
+                  none: "", one: "طلب واحد معلّق", two: "طلبان معلّقان",
+                  few: "طلبات معلّقة", many: "طلباً معلّقاً",
+                })}
               </span>
             ) : <span className="tag tag--muted">لا طلبات معلّقة</span>}
           </article>
