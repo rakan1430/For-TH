@@ -8,13 +8,17 @@
  *
  * التشغيل:
  *     cd app && npm i -D playwright     # غير مثبّتة افتراضياً
- *     VITE_DEMO=1 npx vite build && npx vite preview --port 4174 &
+ *     VITE_DEMO=1 npx vite build && npx vite preview --port 4175 &
  *     node ../scripts/screenshots.mjs
  *
  * ⚠️ الخطوط من Google Fonts قد تُحجب داخل حاويات معزولة، فتظهر اللقطات
  *    بخطوطٍ بديلة. لا يُحكم على الطباعة منها.
  */
-import { chromium } from "playwright";
+// ⚠️ playwright تُثبَّت في `app/node_modules` لا في الجذر، وحلّ الوحدات في
+// ESM يبدأ من موضع **الملفّ** لا من مجلّد التشغيل. فنشير إليه صراحةً بدل
+// أن نشترط تشغيل السكربت من مجلّدٍ بعينه.
+import { createRequire } from "node:module";
+const { chromium } = createRequire(new URL("../app/package.json", import.meta.url))("playwright");
 const OUT = "/tmp/claude-0/-home-user-For-TH/277947b1-d576-5187-bfac-11a274d4c45d/scratchpad";
 const errors = [];
 
@@ -25,7 +29,7 @@ async function shot(name, { width, height }, steps) {
   const page = await ctx.newPage();
   page.on("console", (m) => { if (m.type() === "error") errors.push(`[${name}] ${m.text()}`); });
   page.on("pageerror", (e) => errors.push(`[${name}] PAGEERROR ${e.message}`));
-  await page.goto("http://localhost:4174/", { waitUntil: "networkidle" });
+  await page.goto("http://localhost:4175/", { waitUntil: "networkidle" });
   if (steps) await steps(page);
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true });
