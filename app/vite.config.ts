@@ -5,6 +5,12 @@ import react from "@vitejs/plugin-react";
 // كاملة من أجل سطرٍ واحد.
 declare const process: { env: Record<string, string | undefined> };
 
+/*
+ * بناءٌ للنشر كصفحةٍ مستقلّة (Artifact): مساراتٌ نسبية بالكامل، وأسماء ملفّات
+ * ثابتة بلا بصمة، وبلا خرائط مصدر — لأنّ الصفحة تُرفع ملفّاً ملفّاً بأسمائها.
+ */
+const ARTIFACT = process.env.VITE_ARTIFACT === "1";
+
 export default defineConfig({
   /*
    * ⚠️ الجذر يأتي من البيئة لا مثبّتاً في الشفرة.
@@ -12,9 +18,23 @@ export default defineConfig({
    *    «/For-TH/». ومسارٌ مثبّت يعمل في أحدهما ويكسر الآخر بصمت: تُحمَّل
    *    الصفحة ولا تُحمَّل حزمتها، فتظهر بيضاء بلا رسالة خطأ ظاهرة.
    */
-  base: process.env.VITE_BASE || "/",
+  base: ARTIFACT ? "./" : process.env.VITE_BASE || "/",
   plugins: [react()],
-  build: { target: "es2022", sourcemap: true },
+  build: {
+    target: "es2022",
+    sourcemap: !ARTIFACT,
+    ...(ARTIFACT
+      ? {
+          rollupOptions: {
+            output: {
+              entryFileNames: "assets/app.js",
+              chunkFileNames: "assets/[name].js",
+              assetFileNames: "assets/app[extname]",
+            },
+          },
+        }
+      : {}),
+  },
   test: {
     environment: "jsdom",
     globals: true,

@@ -14,6 +14,16 @@
  * ⚠️ والافتراضي **داكن** بقرار المالك — لا «حسب النظام».
  */
 (function () {
+  /*
+   * لغة الصفحة واتّجاهها.
+   * في البناء العاديّ يضبطهما وسم <html> في `index.html`. أمّا حين تُنشر
+   * الصفحة داخل غلافٍ لا نملك وسم <html> فيه، فلا سبيل إلّا ضبطهما هنا —
+   * وبدون `dir="rtl"` ينقلب التخطيط كلّه إلى اليسار.
+   */
+  var root = document.documentElement;
+  if (root.getAttribute("dir") !== "rtl") root.setAttribute("dir", "rtl");
+  if (!root.getAttribute("lang")) root.setAttribute("lang", "ar");
+
   try {
     var saved = localStorage.getItem("theme");
     document.documentElement.setAttribute("data-theme", saved === "light" ? "light" : "dark");

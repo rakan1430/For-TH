@@ -73,7 +73,15 @@ docs/
 cd app && VITE_DEMO=1 npm run build && npx vite preview
 ```
 
-وتنشره مهمّة `.github/workflows/preview.yml` على صفحات GitHub تلقائياً.
+وتنشره مهمّة `.github/workflows/preview.yml` على صفحات GitHub تلقائياً
+(تحتاج تفعيلاً مرّةً واحدة: Settings ← Pages ← Source: GitHub Actions).
+
+ولنشره صفحةً مستقلّة بمساراتٍ نسبية:
+
+```bash
+cd app && VITE_ARTIFACT=1 VITE_DEMO=1 npm run build
+node ../scripts/build-artifact.mjs      # يُخرج app/dist/artifact.html
+```
 
 > ⚠️ **وضع العرض لا يحرس شيئاً**: لا سياسات صفوف ولا صلاحيات ولا فصل بين
 > المسارين مفروضاً. كل ما يحرسه المشروع فعلاً يقع في قاعدة البيانات، وهي
