@@ -5,7 +5,8 @@
  */
 export type IconName =
   | "sun" | "moon" | "file" | "link" | "image" | "quiz" | "bank"
-  | "users" | "check" | "x" | "clock" | "download" | "chevron" | "plus" | "send";
+  | "users" | "check" | "x" | "clock" | "download" | "chevron" | "plus" | "send"
+  | "grip" | "up" | "down" | "edit" | "trash" | "eye" | "eyeOff";
 
 const PATHS: Record<IconName, string> = {
   sun:      "M10 3v2M10 15v2M3 10h2M15 10h2M5.4 5.4l1.4 1.4M13.2 13.2l1.4 1.4M14.6 5.4l-1.4 1.4M6.8 13.2l-1.4 1.4M10 7a3 3 0 100 6 3 3 0 000-6z",
@@ -23,6 +24,13 @@ const PATHS: Record<IconName, string> = {
   chevron:  "M12 5l-5 5 5 5",
   plus:     "M10 4v12M4 10h12",
   send:     "M17 3L2.5 9.2l6 2.3 2.3 6z",
+  grip:     "M7.5 5h.01M12.5 5h.01M7.5 10h.01M12.5 10h.01M7.5 15h.01M12.5 15h.01",
+  up:       "M10 16V4M5 9l5-5 5 5",
+  down:     "M10 4v12M5 11l5 5 5-5",
+  edit:     "M13.5 3.5l3 3L7 16H4v-3zM11.5 5.5l3 3",
+  trash:    "M3.5 5.5h13M8 5.5V3.5h4v2M5 5.5l.8 11h8.4l.8-11M8.5 8.5v5M11.5 8.5v5",
+  eye:      "M1.5 10S4.5 4.5 10 4.5 18.5 10 18.5 10 15.5 15.5 10 15.5 1.5 10 1.5 10zM10 12.2a2.2 2.2 0 100-4.4 2.2 2.2 0 000 4.4z",
+  eyeOff:   "M3 3l14 14M8.2 8.3a2.2 2.2 0 003.5 3.4M6 6.1C3.3 7.6 1.5 10 1.5 10s3 5.5 8.5 5.5c1.4 0 2.7-.36 3.8-.92M11.6 4.7A8.6 8.6 0 0010 4.5C9.4 4.5 8.9 4.55 8.4 4.64M15.4 7c1.9 1.5 3.1 3 3.1 3s-.7 1.3-2 2.6",
 };
 
 export function Icon({

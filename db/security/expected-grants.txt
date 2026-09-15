@@ -34,10 +34,17 @@ decide_subscription_request(uuid,boolean,date,integer,text)|authenticated|define
 # ── المحتوى والتوزيع (تفحص `is_teacher()` في أوّل سطرٍ منها) ───────────────
 assign_items(item_type_t,uuid[],audience_t,uuid[],uuid[])|authenticated|definer
 reorder_bank_items(uuid,jsonb)|authenticated|definer
+# `reorder` لا تقبل اسم جدولٍ من العميل: الأنواع المسموحة مكتوبة داخلها.
+reorder(text,uuid[])|authenticated|definer
+# `save_quiz` تكتب الشجرة كلّها في معاملة واحدة، وتقفل الأسئلة التي أُجيب عنها.
+save_quiz(jsonb)|authenticated|definer
 
 # ── الاختبارات ────────────────────────────────────────────────────────────
-# `set_answer_key` يكتب المفتاح ولا يقرأه. ولا دالّةَ قراءةٍ له إطلاقاً.
+# `set_answer_key` يكتب المفتاح. و`teacher_answer_key` تقرأه — **للمعلّم
+# وحده**، وتفحص ذلك في أوّل سطرٍ منها. القاعدة «لا طريق من الطالب إلى
+# المفتاح»، لا «لا أحد يقرأه»: المعلّم كتبه، ويحتاج رؤيته ليعدّل اختباره.
 set_answer_key(uuid,uuid[])|authenticated|definer
+teacher_answer_key(uuid)|authenticated|definer
 start_attempt(uuid)|authenticated|definer
 save_answer(uuid,uuid,uuid)|authenticated|definer
 submit_attempt(uuid,jsonb)|authenticated|definer

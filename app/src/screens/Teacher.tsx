@@ -11,8 +11,10 @@ import { formatDateTime, countLabel } from "../lib/format";
 import { downloadCsv } from "../lib/csv";
 import { Icon } from "../components/Icon";
 import { Empty, Field, Notice } from "../components/ui";
+import { Content } from "./teacher/Content";
+import { Groups } from "./teacher/Groups";
 
-type Tab = "overview" | "requests" | "distribute";
+type Tab = "overview" | "content" | "groups" | "requests" | "distribute";
 
 export function Teacher({ email }: { email: string }) {
   const [tab, setTab] = useState<Tab>("overview");
@@ -20,13 +22,19 @@ export function Teacher({ email }: { email: string }) {
     <div className="stack">
       <h1>لوحة المعلّم</h1>
       <div className="tabs" role="tablist">
-        {([["overview", "نظرة عامّة"], ["requests", "طلبات الاشتراك"], ["distribute", "التوزيع"]] as const)
+        {([["overview", "نظرة عامّة"],
+           ["content", "المحتوى"],
+           ["groups", "المجموعات"],
+           ["requests", "طلبات الاشتراك"],
+           ["distribute", "التوزيع"]] as const)
           .map(([key, label]) => (
             <button key={key} role="tab" className="tab" aria-selected={tab === key}
                     onClick={() => setTab(key)}>{label}</button>
           ))}
       </div>
       {tab === "overview" ? <OverviewPane /> : null}
+      {tab === "content" ? <Content /> : null}
+      {tab === "groups" ? <Groups /> : null}
       {tab === "requests" ? <RequestsPane email={email} /> : null}
       {tab === "distribute" ? <DistributePane /> : null}
     </div>
