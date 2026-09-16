@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { authErrorMessage } from "./auth-errors";
+import { authErrorMessage, readAuthRedirectError } from "./auth-errors";
 
 describe("رسائل أخطاء المصادقة", () => {
   /*
@@ -38,5 +38,31 @@ describe("رسائل أخطاء المصادقة", () => {
     expect(authErrorMessage({ message: "Database error saving new user" }))
       .toBe("Database error saving new user");
     expect(authErrorMessage(null)).toBe("تعذّر إتمام العملية.");
+  });
+});
+
+describe("خطأ العودة من مزوّد الهويّة", () => {
+  /*
+   * ⚠️ الحالة التي ستقع فعلاً بين نشر الزرّ وتفعيل Google في الإعدادات:
+   *    المستخدم يضغط، فيعود بخطأٍ في الرابط، فتُرسم الشاشة كأنّ شيئاً لم
+   *    يكن. بلا هذه القراءة لا رسالة ولا سجلّ ولا أثر.
+   */
+  it("تقرأ «المزوّد غير مفعَّل» وتقول البديل", () => {
+    const m = readAuthRedirectError(
+      "?error=400&error_code=validation_failed" +
+      "&error_description=Unsupported+provider%3A+provider+is+not+enabled", "");
+    expect(m).toContain("غير مفعَّل");
+    expect(m).toContain("البريد وكلمة المرور");
+  });
+
+  it("وتقرأ من الشذرة أيضاً — `implicit` يضع الخطأ هناك", () => {
+    expect(readAuthRedirectError("", "#error=access_denied&error_description=cancelled"))
+      .toContain("أُلغي");
+  });
+
+  it("ولا ترى خطأً حيث لا خطأ", () => {
+    expect(readAuthRedirectError("", "#/teacher")).toBeNull();
+    expect(readAuthRedirectError("?code=abc123", "")).toBeNull();
+    expect(readAuthRedirectError("", "")).toBeNull();
   });
 });

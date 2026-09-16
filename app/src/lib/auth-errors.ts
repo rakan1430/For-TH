@@ -59,3 +59,38 @@ export function authErrorMessage(err: unknown): string {
    */
   return text || "تعذّر إتمام العملية.";
 }
+
+/**
+ * خطأ العودة من مزوّد الهويّة.
+ *
+ * ⚠️ الدرس نفسه الذي أنتج بقيّة هذا الملفّ، في موضعٍ آخر: حين يفشل الدخول
+ *    بـGoogle — لأنّ المزوّد غير مفعَّل، أو لأنّ المستخدم ألغى — **لا يقع
+ *    خطأٌ في الشفرة إطلاقاً**. المتصفّح يعود إلى الصفحة ومعه
+ *    `?error_description=…`، فتُرسم شاشة الدخول كأنّ شيئاً لم يكن، ويظنّ
+ *    الطالب أنّ الزرّ معطوب. فشلٌ صامتٌ لا يترك أثراً في أي سجلّ نراه.
+ *
+ * ⚠️ ويُقرأ الطرفان — الاستعلام والشذرة — لأنّ `pkce` يضع الخطأ في
+ *    الاستعلام و`implicit` يضعه في الشذرة، وقد يتغيّر المسار تحتنا.
+ */
+export function readAuthRedirectError(search: string, hash: string): string | null {
+  const from = (raw: string) => {
+    const q = new URLSearchParams(raw.replace(/^[?#]/, ""));
+    return q.get("error_description") ?? q.get("error_code") ?? q.get("error");
+  };
+  const raw = from(search) ?? from(hash);
+  if (!raw) return null;
+
+  const text = raw.replace(/\+/g, " ");
+  if (/provider is not enabled|unsupported provider/i.test(text)) {
+    return "الدخول بحساب Google غير مفعَّلٍ بعد في إعدادات المشروع. " +
+      "استعمل البريد وكلمة المرور، أو أبلغ المعلّم.";
+  }
+  if (/access_denied|cancel/i.test(text)) {
+    return "أُلغي الدخول بحساب Google. أعد المحاولة أو استعمل البريد وكلمة المرور.";
+  }
+  if (/redirect|bad_oauth_state|invalid request/i.test(text)) {
+    return "تعذّر إتمام الدخول بحساب Google — الرابط المسموح به غير مضبوط. " +
+      "أبلغ المعلّم.";
+  }
+  return text;
+}

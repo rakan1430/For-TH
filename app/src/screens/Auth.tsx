@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DEMO, requireClient } from "../lib/supabase";
 import { GoogleButton } from "../components/GoogleButton";
-import { authErrorMessage } from "../lib/auth-errors";
+import { authErrorMessage, readAuthRedirectError } from "../lib/auth-errors";
 import { stashName, takeName } from "../lib/pending-name";
 import { ensureProfile } from "../lib/api";
 import { pickName } from "../lib/profile-name";
@@ -19,6 +19,20 @@ export function Auth() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  /*
+   * ⚠️ يُقرأ خطأ العودة **مرّةً عند الفتح**، ثمّ يُمحى من الرابط بـ
+   *    `replaceState` — وإلّا بقي في تاريخ المتصفّح، فيعود الخطأ عند كل
+   *    رجوعٍ إلى الخلف وإن نجح الدخول بعده.
+   */
+  useEffect(() => {
+    const msg = readAuthRedirectError(window.location.search, window.location.hash);
+    if (!msg) return;
+    setError(msg);
+    const clean = window.location.pathname +
+      (window.location.hash.startsWith("#/") ? window.location.hash : "");
+    window.history.replaceState({}, "", clean);
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
