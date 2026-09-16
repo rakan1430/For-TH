@@ -41,18 +41,13 @@ export async function upsertMyProfile(p: {
  *    مفعَّلاً لا تُعيد `signUp` جلسةً، والكتابة حينها تجري بدور `anon`
  *    فترفضها السياسة — وكان ذلك يمرّ بصمت ويضيع اسم المستخدم.
  *
- * ⚠️ والاسم الاحتياطي من البريد ليس تجميلاً: الاسم عمودٌ `not null` بطول
- *    ٢ فأكثر، فمستخدمٌ بلا صفّ `profiles` لا يستطيع طلب اشتراك أصلاً —
- *    المفتاح الأجنبي يمنعه. وحسابٌ لا يستطيع صاحبه الاشتراك به عطبٌ صامت.
+ * ⚠️ والاسم يأتي جاهزاً من `pickName` — وهي وحدها التي تضمن اجتيازه قيد
+ *    القاعدة (٢ إلى ١٢٠ محرفاً). فمستخدمٌ بلا صفّ `profiles` لا يستطيع طلب
+ *    اشتراكٍ أصلاً — المفتاح الأجنبي يمنعه — وذلك عطبٌ لا يظهر إلّا عند الدفع.
  */
-export async function ensureProfile(
-  userId: string, email: string, preferredName?: string | null,
-): Promise<void> {
-  const existing = await getMyProfile();
-  if (existing) return;
-  const candidate = (preferredName ?? "").trim() || (email.split("@")[0] ?? "").trim();
-  const full_name = candidate.length >= 2 ? candidate.slice(0, 120) : "مستخدم جديد";
-  await upsertMyProfile({ id: userId, full_name });
+export async function ensureProfile(userId: string, fullName: string): Promise<void> {
+  if (await getMyProfile()) return;
+  await upsertMyProfile({ id: userId, full_name: fullName });
 }
 
 export async function amITeacher(): Promise<boolean> {

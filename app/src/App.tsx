@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { DEMO, isConfigured, supabase } from "./lib/supabase";
 import { amITeacher, activeTracks, ensureProfile, mySubscriptions } from "./lib/api";
 import { takeName } from "./lib/pending-name";
+import { pickName } from "./lib/profile-name";
 import type { Subscription, Track } from "./lib/types";
 import { match, navigate, useRoute } from "./lib/router";
 import { Brand } from "./components/Logo";
@@ -44,7 +45,15 @@ export default function App() {
      */
     const prepare = DEMO
       ? Promise.resolve()
-      : ensureProfile(session.user.id, session.user.email ?? "", takeName());
+      : ensureProfile(
+          session.user.id,
+          // الداخل بـGoogle لم يملأ نموذجاً — فاسمه يأتي من `user_metadata`
+          pickName({
+            typed: takeName(),
+            metadata: session.user.user_metadata,
+            email: session.user.email,
+          }),
+        );
 
     prepare
       .then(() => Promise.all([amITeacher(), mySubscriptions()]))

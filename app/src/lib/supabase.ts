@@ -36,7 +36,23 @@ export const supabase: SupabaseClient | null = DEMO
   ? (makeDemoClient() as unknown as SupabaseClient)
   : isConfigured
     ? createClient(url!, publishableKey!, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          /*
+           * ⚠️ `pkce` صراحةً — والافتراضي `implicit`، وهو خطأٌ هنا لسببين:
+           *
+           *    ١· يُعيد `implicit` **رمز الوصول نفسه في شذرة الرابط**
+           *       (`#access_token=…`). والشذرة موضع مسارات هذا التطبيق
+           *       (`#/teacher`)، فيتصادمان. والأسوأ أنّ الرمز يستقرّ في
+           *       تاريخ المتصفّح وفي كل رابطٍ يُنسخ من شريط العنوان.
+           *    ٢· `pkce` يُعيد **رمزاً للتبادل مرّةً واحدة** لا يُقبل إلّا
+           *       مع مُتحقّقٍ مخزَّنٍ في المتصفّح ذاته. فمن سرق الرابط لم
+           *       يسرق شيئاً.
+           */
+          flowType: "pkce",
+        },
       })
     : null;
 
