@@ -20,10 +20,10 @@ export function Subscribe({ track, planId, userId }: { track: Track; planId: str
 
   useEffect(() => {
     listPlans().then((ps) => setPlan(ps.find((p) => p.id === planId) ?? null)).catch(() => {});
-    getMyProfile().then((p) => {
+    getMyProfile(userId).then((p) => {
       if (p) { setFullName(p.full_name); setGrade(p.grade ?? ""); setContact(p.contact ?? ""); }
     }).catch(() => {});
-  }, [planId]);
+  }, [planId, userId]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

@@ -112,3 +112,36 @@ set local role anon;
 select testing.denied($q$ select public.profile_complete() $q$,
                       'المجهول: لا ينفّذ profile_complete');
 reset role; rollback;
+
+-- ── ٧) المعلّم يرى **كل** صفوف `profiles` — وهو المقصود، لا عطب ─────────────
+-- ⚠️ هذا الصفّ يوثّق الحقيقة التي كسرت اللوحة في الإنتاج: الواجهة كانت تقرأ
+--    ملفّها بـ`maybeSingle()` بلا `eq("id", …)`، متّكئةً على أنّ السياسة
+--    تُعيد صفّاً واحداً. وهي تفعل ذلك **للطالب وحده**. فأوّل قراءةٍ للمعلّم
+--    ترفض بـ«multiple rows»، فتسقط الجلسة ويُرسم المعلّم طالباً بلا اشتراك.
+--
+--    فالدرس المثبّت هنا: «السياسة تُعيد ما يحقّ» لا تعني «تُعيد صفّاً واحداً».
+--    والاختيار (صفّي أنا) مسؤولية النداء، والحراسة (ما يحقّ لي) مسؤوليتها.
+begin;
+select set_config('request.jwt.claims',
+  '{"sub":"11111111-1111-1111-1111-111111111111","email":"t@x.test"}', true);
+set local role authenticated;
+
+select testing.ok(
+  testing.count_of($q$ select 1 from public.profiles $q$) > 1,
+  'المعلّم يرى أكثر من صفّ — فلا تكفي maybeSingle بلا ترشيح');
+
+select testing.eq(
+  testing.count_of($q$ select 1 from public.profiles
+                        where id = '11111111-1111-1111-1111-111111111111' $q$),
+  1, 'وبالترشيح على معرّفه: صفٌّ واحد بالضبط');
+
+reset role; rollback;
+
+-- وللطالب صفٌّ واحد بالحالين — ومن هنا جاء الوهم
+begin;
+select set_config('request.jwt.claims',
+  '{"sub":"22222222-2222-2222-2222-222222222222","email":"s@x.test"}', true);
+set local role authenticated;
+select testing.eq(testing.count_of($q$ select 1 from public.profiles $q$), 1,
+                  'الطالب: صفٌّ واحد بلا ترشيح — وهو ما أخفى العطب');
+reset role; rollback;

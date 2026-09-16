@@ -20,9 +20,23 @@ import type {
 
 /* ------------------------------- الحساب ---------------------------------- */
 
-export async function getMyProfile(): Promise<Profile | null> {
+/**
+ * ملفّ المستخدم الحالي.
+ *
+ * ⚠️ `.eq("id", userId)` **لازم**، وغيابه كسر لوحة المعلّم في الإنتاج.
+ *    وسياسة `profiles_read` تقول: `id = auth.uid() or is_teacher()`. فالطالب
+ *    يرى صفّه وحده — ومن هنا بدا الترشيح زائداً وحُذف. لكنّ **المعلّم يرى
+ *    كل الصفوف**، وهو المقصود (يحتاج بيانات طلّابه). فـ`maybeSingle()`
+ *    ترفض بـ«multiple rows» فور وجود طالبٍ ثانٍ، فتسقط أوّل قراءةٍ عند
+ *    الدخول، ويُرسم المعلّم طالباً بلا اشتراك.
+ *
+ * ⚠️ وهذا **ترشيحُ اختيارٍ لا حراسة** — الفرق الذي يحكم هذا الملفّ كلّه:
+ *    «صفّي أنا» لا «ما يحقّ لي». ولو حُذف السطر لما تسرّب صفٌّ واحد: القاعدة
+ *    لا تُعيد للطالب إلّا صفّه. الحارس في الأسفل كما هو، والاختيار هنا.
+ */
+export async function getMyProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await requireClient()
-    .from("profiles").select("*").maybeSingle();
+    .from("profiles").select("*").eq("id", userId).maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -47,7 +61,7 @@ export async function upsertMyProfile(p: {
  *    اشتراكٍ أصلاً — المفتاح الأجنبي يمنعه — وذلك عطبٌ لا يظهر إلّا عند الدفع.
  */
 export async function ensureProfile(userId: string, fullName: string): Promise<void> {
-  if (await getMyProfile()) return;
+  if (await getMyProfile(userId)) return;
   await upsertMyProfile({ id: userId, full_name: fullName });
 }
 

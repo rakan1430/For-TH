@@ -83,7 +83,7 @@ export default function App() {
 
     prepare
       .then(() => Promise.all([
-        amITeacher(), mySubscriptions(), isProfileComplete(), getMyProfile(),
+        amITeacher(), mySubscriptions(), isProfileComplete(), getMyProfile(userId),
       ]))
       .then(([t, s, done, prof]) => {
         setComplete(done);
