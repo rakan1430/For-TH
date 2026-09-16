@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { DEMO, requireClient } from "../lib/supabase";
 import { GoogleButton } from "../components/GoogleButton";
 import { authErrorMessage, readAuthRedirectError } from "../lib/auth-errors";
+import { markOAuthStart, misredirectMessage, oauthRedirectTo, takeOAuthMark } from "../lib/oauth";
 import { stashName, takeName } from "../lib/pending-name";
 import { ensureProfile } from "../lib/api";
 import { pickName } from "../lib/profile-name";
@@ -26,7 +27,16 @@ export function Auth() {
    *    رجوعٍ إلى الخلف وإن نجح الدخول بعده.
    */
   useEffect(() => {
-    const msg = readAuthRedirectError(window.location.search, window.location.hash);
+    /*
+     * ⚠️⚠️ التشخيص الذي أضاع جلسةً كاملة في المشروع السابق: حين يكون عنوان
+     *    العودة غير مُدرَجٍ في `Redirect URLs` **لا يقع خطأ إطلاقاً** —
+     *    الدخول ينجح، والمزوّد يتجاهل الطلب ويقذف المستخدم إلى `Site URL`.
+     *    فلا رسالة ولا سطر في وحدة التحكّم. وعَلامةُ الانطلاق تكشفه يقيناً:
+     *    انطلقنا من أصلٍ وعدنا إلى غيره.
+     */
+    const started = takeOAuthMark();
+    const wrong = misredirectMessage(started, window.location.origin);
+    const msg = wrong ?? readAuthRedirectError(window.location.search, window.location.hash);
     if (!msg) return;
     setError(msg);
     const clean = window.location.pathname +
@@ -84,16 +94,18 @@ export function Auth() {
    *    إلى Google. فإعادة الزرّ إلى حالته تُومض لحظةً قبل الانتقال وتوهم
    *    أنّ شيئاً لم يحدث. يبقى «…» حتى يغادر المتصفّح فعلاً.
    *
-   * ⚠️ و`redirectTo` من `location.origin` لا من ثابتٍ مكتوب: البناء ذاته
+   * ⚠️ و`redirectTo` يُحسب من `location` لا من ثابتٍ مكتوب: البناء ذاته
    *    يعمل على المعاينة وعلى النطاق الحيّ، ورابطٌ مثبَّتٌ في الشفرة كان
-   *    سيُعيد كل معاينةٍ إلى الموقع الحيّ.
+   *    سيُعيد كل معاينةٍ إلى الموقع الحيّ — وهو بالضبط العَرَض الذي وقع في
+   *    المشروع السابق. ويحمل مسار المستخدم في `?next=` فيعود إلى صفحته.
    */
   async function withGoogle() {
     setBusy(true); setError(null); setInfo(null);
     try {
+      markOAuthStart(window.location.origin);
       const { error } = await requireClient().auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/` },
+        options: { redirectTo: oauthRedirectTo(window.location) },
       });
       if (error) throw error;
     } catch (err) {

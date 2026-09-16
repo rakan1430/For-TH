@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
 import { makeDemoClient } from "./demo-client";
 
 /**
@@ -64,4 +64,50 @@ export function requireClient(): SupabaseClient {
     );
   }
   return supabase;
+}
+
+/* ===========================================================================
+   الجلسة: مستمعٌ يُسجَّل **فور إنشاء العميل**، وطابورٌ يُصرَف عند الجاهزية
+
+   ⚠️ عطلٌ وقع في الإنتاج (ملحق Google، القسم ٩-أ و٩-ب): عميل المصادقة
+      يبدأ معالجة الرابط **فور إنشائه**، وقد يُطلق حدث «سُجّل الدخول» قبل
+      أن يسجّل React مستمعه داخل `useEffect`. فيضيع الحدث، ويعمل الدخول
+      على جهازٍ ويفشل على آخر **حسب سرعة التحميل** — وهو أسوأ أنواع
+      الأعطال: متقطّعٌ لا يُعاد إنتاجه عند من يصلحه.
+
+   ⚠️ فالتسجيل هنا، في نفس الوحدة وفي نفس اللحظة التي يُنشأ فيها العميل.
+      وآخر جلسةٍ معروفة تُحفظ، فمن اشترك متأخّراً تصله فوراً — وهذا هو
+      «الطابور» بأبسط صوره: لا حدث يُفقد لأنّ أحداً لم يكن يستمع بعد.
+   =========================================================================== */
+
+type Listener = (s: Session | null) => void;
+
+const listeners = new Set<Listener>();
+let known: { session: Session | null } | null = null;   // null = لم تُعرف بعد
+
+function publish(s: Session | null) {
+  known = { session: s };
+  for (const fn of [...listeners]) fn(s);
+}
+
+if (supabase) {
+  supabase.auth.onAuthStateChange((_event, s) => publish(s));
+  void supabase.auth.getSession().then(({ data }) => {
+    if (!known) publish(data.session ?? null);
+  });
+}
+
+/**
+ * يشترك في تغيّر الجلسة، ويستدعي المشترك فوراً بآخر جلسةٍ معروفة إن وُجدت.
+ * يُعيد دالّة إلغاء الاشتراك.
+ */
+export function onSession(fn: Listener): () => void {
+  listeners.add(fn);
+  if (known) fn(known.session);
+  return () => { listeners.delete(fn); };
+}
+
+/** هل عُرفت الجلسة بعد؟ تُميّز «لا أحد داخل» عن «لم نعرف بعد». */
+export function sessionKnown(): boolean {
+  return known !== null;
 }

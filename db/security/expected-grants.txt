@@ -24,6 +24,14 @@ is_teacher()|authenticated|definer
 has_active_subscription(track_t)|authenticated|definer
 is_assigned(item_type_t,uuid)|authenticated|definer
 
+# ── الهويّة ────────────────────────────────────────────────────────────────
+# ⚠️ الوحيدتان هنا بـ`invoker` لا `definer`، وذلك مقصود: تقرآن رمز المستدعي
+#    نفسه (`auth.jwt()`) ولا تلمسان صفّاً في أي جدول. فرفعُ الصلاحية فيهما
+#    زيادةٌ بلا حاجة، وكل زيادةٍ بلا حاجة سطحٌ إضافيّ. ولو ظهرتا يوماً
+#    بـ`definer` في هذا الفحص فذلك انحدارٌ يُردّ.
+is_identified()|authenticated|invoker
+google_verified(integer)|authenticated|invoker
+
 # ── نافذة الهوية للعمليات الخطرة ──────────────────────────────────────────
 confirm_identity()|authenticated|definer
 

@@ -45,6 +45,21 @@ as $$
   )::uuid;
 $$;
 
+-- ⚠️ `auth.jwt()` منقولةٌ عن Supabase **بحرفها**، بما فيها الاحتياط بالمفتاح
+--    المفرد `request.jwt.claim` (بلا s) الذي تُبقيه للتوافق. وهي تُعيد NULL
+--    لا `{}` حين لا رمز — والفرق يهمّ: كل دالّةٍ تقرؤها يجب أن تحتمل NULL،
+--    وفحصٌ على محاكاةٍ تُعيد `{}` كان سيمرّ ثمّ يسقط في الإنتاج.
+create or replace function auth.jwt()
+returns jsonb
+language sql
+stable
+as $$
+  select coalesce(
+    nullif(current_setting('request.jwt.claim',  true), ''),
+    nullif(current_setting('request.jwt.claims', true), '')
+  )::jsonb;
+$$;
+
 -- ⚠️⚠️ تقليد صلاحيات Supabase الافتراضية — وهذا **جوهر الفحص** لا تفصيل:
 --    Supabase يمنح `EXECUTE` على كل دالّةٍ جديدة في `public` للأدوار
 --    `anon` و`authenticated` و`service_role` **بأسمائها**. وكانت القاعدة
@@ -58,6 +73,7 @@ alter default privileges in schema public
 
 grant usage on schema auth to anon, authenticated, service_role;
 grant execute on function auth.uid() to anon, authenticated, service_role;
+grant execute on function auth.jwt() to anon, authenticated, service_role;
 grant select on auth.users to service_role;
 
 -- =============================================================================

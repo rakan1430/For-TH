@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { DEMO, isConfigured, supabase } from "./lib/supabase";
+import { DEMO, isConfigured, onSession, supabase } from "./lib/supabase";
+import { readNext, stripNext } from "./lib/oauth";
 import { amITeacher, activeTracks, ensureProfile, mySubscriptions } from "./lib/api";
 import { takeName } from "./lib/pending-name";
 import { pickName } from "./lib/profile-name";
@@ -28,15 +29,39 @@ export default function App() {
 
   useEffect(() => {
     if (!supabase) { setReady(true); return; }
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session); setReady(true);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    return () => sub.subscription.unsubscribe();
+    /*
+     * ⚠️ المستمع مسجَّلٌ في `lib/supabase` **لحظة إنشاء العميل** لا هنا،
+     *    لأنّ العميل يبدأ معالجة الرابط فوراً وقد يُطلق الحدث قبل أن يصل
+     *    React. و`onSession` تُعيد آخر جلسةٍ معروفة للمشترك المتأخّر —
+     *    فلا يضيع حدثٌ لأنّ أحداً لم يكن يستمع بعد.
+     */
+    return onSession((s) => { setSession(s); setReady(true); });
   }, []);
 
+  /*
+   * العودة من Google: المسار محمولٌ في `?next=` لا في الشذرة (تصادمها مع
+   * رموز الجلسة موثَّق في ملحق Google §٢). يُستهلك مرّةً ثمّ يُمحى من
+   * الرابط — و`code` تبقى ليقرأها عميل المصادقة ويُبادلها بجلسة.
+   */
   useEffect(() => {
-    if (!session) { setIsTeacher(false); setSubs([]); return; }
+    const next = readNext(window.location.search);
+    if (!next) return;
+    window.history.replaceState({}, "", stripNext(window.location.href));
+    navigate(next);
+  }, []);
+
+  /*
+   * ⚠️ المفتاح `userId` لا `session`: عميل المصادقة يُجدّد الرمز دورياً
+   *    ويُطلق الحدث بكائن جلسةٍ **جديد** في كل مرّة. ولو كان المفتاح
+   *    الكائن نفسه لأُعيد جلب كل شيء كلّما جُدّد الرمز — فيومض المحتوى
+   *    ويُستهلك النطاق بلا سبب، والمستخدم هو المستخدم نفسه.
+   */
+  const userId = session?.user.id ?? null;
+  const userEmail = session?.user.email ?? null;
+  const userMeta = session?.user.user_metadata;
+
+  useEffect(() => {
+    if (!userId) { setIsTeacher(false); setSubs([]); return; }
     /*
      * ⚠️ إصلاحٌ ذاتيّ: أيّ حسابٍ بلا صفّ `profiles` لا يستطيع صاحبه طلب
      *    اشتراك — المفتاح الأجنبي يمنعه. وقد يقع ذلك لمن سجّل قبل إصلاح
@@ -46,13 +71,9 @@ export default function App() {
     const prepare = DEMO
       ? Promise.resolve()
       : ensureProfile(
-          session.user.id,
+          userId,
           // الداخل بـGoogle لم يملأ نموذجاً — فاسمه يأتي من `user_metadata`
-          pickName({
-            typed: takeName(),
-            metadata: session.user.user_metadata,
-            email: session.user.email,
-          }),
+          pickName({ typed: takeName(), metadata: userMeta, email: userEmail }),
         );
 
     prepare
@@ -64,7 +85,8 @@ export default function App() {
         if (live.length > 0 && live[0]) setTrack(live[0]);
       })
       .catch((e) => setError(String(e?.message ?? e)));
-  }, [session]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   if (!isConfigured) return <Setup />;
   if (!ready) return <div className="page"><p className="muted">…</p></div>;
