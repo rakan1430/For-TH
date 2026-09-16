@@ -39,13 +39,9 @@ jobs:
         run: npm run build
         working-directory: app
         env:
-          # ⚠️ المفتاح هنا **معلَن** (publishable) ومصمَّمٌ ليكون في شفرة
-          #    المتصفّح: يصل كل زائر إليه بفتح أدوات المطوّر مهما أخفيناه.
-          #    والحراسة كلّها في سياسات الصفوف وصلاحيات الدوالّ لا فيه.
-          #    ومفتاح الخدمة (service_role) لا يوضع هنا ولا في أي متغيّر
-          #    يبدأ بـVITE_ — ويفحص ذلك `scripts/check-conventions.mjs`.
-          VITE_SUPABASE_URL: "https://tuqazxoedxrpyqqxaidt.supabase.co"
-          VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_u4YkKeWRzYb-81RuNw9eAw_WLebFSFa"
+          # ⚠️ رابط Supabase ومفتاحه المعلَن يأتيان من `app/.env.production`
+          #    المُودَع في المستودع — مصدرٌ واحد يعمل على أي مستضيف بلا ضبطٍ
+          #    يدويّ في لوحة كلٍّ منهما. وهنا الخاصّ بصفحات GitHub وحدها:
           # صفحات GitHub تخدم من مجلّدٍ باسم المستودع لا من الجذر
           VITE_BASE: "/For-TH/"
 
