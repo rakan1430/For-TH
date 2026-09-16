@@ -68,6 +68,21 @@ export function QuizEditor({
         return;
       }
 
+      /*
+       * ⚠️ القيد في القاعدة على الخيار: `label` غير فارغ **أو** `image_path`.
+       *    فخيارٌ خالٍ من الاثنين يُرفض عند الحفظ برسالةٍ من Postgres لا يفهمها
+       *    المعلّم. والفحص هنا يسمّي رقم السؤال ورقم الخيار.
+       */
+      for (let qi = 0; qi < draft.questions.length; qi++) {
+        const oi = draft.questions[qi]!.options.findIndex(
+          (o) => !o.label.trim() && !o.image_path
+        );
+        if (oi !== -1) {
+          setError(`الخيار ${oi + 1} في السؤال ${qi + 1} بلا نصٍّ ولا صورة.`);
+          return;
+        }
+      }
+
       const r = await saveQuiz(draft);
       if (!r.ok) {
         setError(
@@ -286,9 +301,48 @@ function QuestionCard({
             </button>
             <input
               className="input mono" style={{ flex: 1 }} value={o.label} disabled={locked}
-              placeholder={`الخيار ${oi + 1}`}
+              placeholder={o.image_path ? "نصٌّ اختياري مع الصورة" : `الخيار ${oi + 1}`}
               onChange={(e) => setOption(oi, { label: e.target.value })}
             />
+            {/*
+              ⚠️ خيارٌ بصورة: القاعدة تقبله بلا نصّ (`label` أو `image_path`).
+                 وسؤال القدرات كثيراً ما يكون أشكالاً هندسية لا كلمات — فخيارٌ
+                 نصّيٌّ وحده يجعل نصف بنك الأسئلة غير قابلٍ للإدخال أصلاً.
+            */}
+            {!locked ? (
+              <label
+                className={o.image_path ? "btn btn--sm" : "btn btn--quiet btn--sm"}
+                style={{ cursor: "pointer", ...(o.image_path ? { borderColor: "var(--green)", color: "var(--green)" } : {}) }}
+                title={o.image_path ? "تغيير صورة الخيار" : "صورة للخيار"}
+              >
+                <Icon name="image" size={16} />
+                <span className="sr-only">
+                  {o.image_path ? `تغيير صورة الخيار ${oi + 1}` : `صورة للخيار ${oi + 1}`}
+                </span>
+                <input type="file" accept="image/*" hidden disabled={uploading}
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    setUploading(true);
+                    try {
+                      setOption(oi, { image_path: await uploadQuestionImage(track, f) });
+                    } finally {
+                      setUploading(false);
+                      // ⚠️ يُفرَّغ الحقل، وإلّا لم يُطلق `change` عند اختيار
+                      //    الملفّ نفسه مرّةً ثانية بعد فشلٍ أو تراجع.
+                      e.target.value = "";
+                    }
+                  }} />
+              </label>
+            ) : null}
+            {o.image_path && !locked ? (
+              <button type="button" className="btn btn--quiet btn--sm"
+                      onClick={() => setOption(oi, { image_path: null })}
+                      aria-label={`إزالة صورة الخيار ${oi + 1}`}
+                      title="إزالة الصورة">
+                <Icon name="x" size={16} />
+              </button>
+            ) : null}
             {question.options.length > 2 && !locked ? (
               <button type="button" className="btn btn--quiet btn--sm"
                       onClick={() => onPatch({

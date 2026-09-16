@@ -233,6 +233,9 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: var(--u) 0; }
 }
 
 /* ---- الاختبار ----------------------------------------------------------- */
+/* ⚠️ صورةٌ داخل خيار: تُقيَّد بعرض الخيار وإلّا دفعت الصفحة أفقياً */
+.choice img { max-width: 100%; height: auto; }
+
 .choice {
   display: flex; align-items: flex-start; gap: var(--u-half);
   min-height: var(--touch);

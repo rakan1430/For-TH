@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { StoredImage } from "../components/StoredImage";
 import {
   attemptAnswers, listOptions, listQuestions, listQuizzes, myAttempts,
   saveAnswer, startAttempt, submitAttempt,
@@ -178,14 +179,37 @@ export function QuizRunner({ quizId, track }: { quizId: string; track: Track }) 
             <fieldset key={q.id} className="card stack-s" style={{ border: "1px solid var(--border)" }}>
               <legend className="subtle">السؤال {i + 1} من {questions.length}</legend>
               {q.prompt ? <p className="mono" style={{ fontSize: "17px" }}>{q.prompt}</p> : null}
+              {/*
+                ⚠️ سؤالٌ بصورة بلا نصّ حالةٌ عادية لا استثناء: أسئلة القدرات
+                   كثيراً ما تكون شكلاً هندسياً أو جدولاً مقصوصاً. فبديل النصّ
+                   يصف **موضع** الصورة لقارئ الشاشة، لا محتواها — ولا نعرفه.
+              */}
+              {q.prompt_image_path ? (
+                <StoredImage
+                  bucket="question-images"
+                  path={q.prompt_image_path}
+                  alt={`صورة السؤال ${i + 1}`}
+                  maxHeight={420}
+                />
+              ) : null}
               <div className="stack-s">
-                {options.filter((o) => o.question_id === q.id).map((o) => (
+                {options.filter((o) => o.question_id === q.id).map((o, oi) => (
                   <button
                     key={o.id} type="button" className="choice" role="radio"
                     aria-checked={picked[q.id] === o.id}
                     onClick={() => void pick(q.id, o.id)}
                   >
-                    <span className="mono">{o.label}</span>
+                    <span className="stack-s" style={{ minWidth: 0, alignItems: "flex-start" }}>
+                      {o.label ? <span className="mono">{o.label}</span> : null}
+                      {o.image_path ? (
+                        <StoredImage
+                          bucket="question-images"
+                          path={o.image_path}
+                          alt={o.label || `صورة الخيار ${oi + 1}`}
+                          maxHeight={200}
+                        />
+                      ) : null}
+                    </span>
                   </button>
                 ))}
               </div>
