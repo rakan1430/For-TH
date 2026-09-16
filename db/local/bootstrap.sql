@@ -45,6 +45,17 @@ as $$
   )::uuid;
 $$;
 
+-- ⚠️⚠️ تقليد صلاحيات Supabase الافتراضية — وهذا **جوهر الفحص** لا تفصيل:
+--    Supabase يمنح `EXECUTE` على كل دالّةٍ جديدة في `public` للأدوار
+--    `anon` و`authenticated` و`service_role` **بأسمائها**. وكانت القاعدة
+--    المحلّية بلا هذا، فبدا سحبُ `PUBLIC` وحده كافياً — ومرّ الفحص بينما
+--    كان كل زائرٍ مجهول في الإنتاج يستطيع استدعاء كل دالّة.
+--    فمن الآن: بيئة الفحص تشبه الإنتاج في هذا، ليرسب الفحص حين يجب.
+--    (على `public` وحده، كما يفعل Supabase فعلاً — ولا صلاحيات افتراضية
+--     لمخطّطٍ لم يُنشأ بعد.)
+alter default privileges in schema public
+  grant execute on functions to anon, authenticated, service_role;
+
 grant usage on schema auth to anon, authenticated, service_role;
 grant execute on function auth.uid() to anon, authenticated, service_role;
 grant select on auth.users to service_role;

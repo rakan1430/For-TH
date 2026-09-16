@@ -305,7 +305,7 @@ begin
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname in ('public', 'private') and p.prokind in ('f', 'p')
   loop
-    execute format('revoke all on function %s from public', f.sig);
+    execute format('revoke all on function %s from public, anon', f.sig);
   end loop;
 end $$;
 

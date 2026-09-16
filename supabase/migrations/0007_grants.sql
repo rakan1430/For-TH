@@ -3,6 +3,12 @@
 --
 -- ⚠️⚠️⚠️ اقرأ هذا مرّتين قبل أن تضيف دالّةً واحدة إلى `public`.
 --
+-- ⚠️ وسحبُ `EXECUTE` من `PUBLIC` **لا يكفي على Supabase**: له صلاحياتٌ
+--    افتراضية خاصّة به تمنح الدور `anon` **صراحةً باسمه**، و`PUBLIC` شيءٌ
+--    آخر غير دورٍ مسمّى. فالسحب هنا من الاثنين معاً. وقعت هذه فعلاً: مرّ
+--    الفحص محلّياً ولم يمرّ الواقع، لأنّ القاعدة المحلّية كانت أنظف من
+--    الإنتاج. انظر خ-١٤ في سجلّ المشروع.
+--
 -- في Postgres، صلاحية `EXECUTE` على الدوالّ **ممنوحة لـ`PUBLIC` افتراضياً**.
 -- ومنصّات مثل Supabase تكشف **كل دالّة في المخطّط العامّ** على مسار استدعاءٍ
 -- عبر الشبكة. والدالّة المعرَّفة بـ`SECURITY DEFINER` تعمل بصلاحيات مالكها
@@ -40,7 +46,7 @@ begin
     where n.nspname = 'public'
       and p.prokind in ('f', 'p')
   loop
-    execute format('revoke all on function %s from public', f.sig);
+    execute format('revoke all on function %s from public, anon', f.sig);
   end loop;
 end $$;
 
@@ -55,13 +61,13 @@ begin
     where n.nspname = 'private'
       and p.prokind in ('f', 'p')
   loop
-    execute format('revoke all on function %s from public', f.sig);
+    execute format('revoke all on function %s from public, anon', f.sig);
   end loop;
 end $$;
 
 -- ويسري السحب على ما يُنشأ لاحقاً بيد الدور نفسه
-alter default privileges in schema public  revoke execute on functions from public;
-alter default privileges in schema private revoke execute on functions from public;
+alter default privileges in schema public  revoke execute on functions from public, anon;
+alter default privileges in schema private revoke execute on functions from public, anon;
 
 -- -----------------------------------------------------------------------------
 -- ٢) المخطّط الخاصّ: لا وصول لأحدٍ سوى مالك الدوالّ

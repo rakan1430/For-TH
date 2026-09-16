@@ -25,6 +25,11 @@ cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
 where n.nspname in ('public', 'private')
   and a.privilege_type = 'EXECUTE'
   and a.grantee <> p.proowner
+  -- ⚠️ التدقيق على الأدوار التي **يبلغها متصفّح**: `PUBLIC` و`anon`
+  --    و`authenticated`. و`service_role` خارجه لأنّه مفتاح الخادم السرّي،
+  --    لا يصل متصفّحاً أبداً ويتجاوز سياسات الصفوف بتصميمه — ويحرس عدمَ
+  --    تسرّبه إلى الحزمة فحصُ `scripts/check-conventions.mjs`.
+  and (a.grantee = 0 or pg_get_userbyid(a.grantee) <> 'service_role')
 order by
   p.oid::regprocedure::text,
   case when a.grantee = 0 then 'PUBLIC' else pg_get_userbyid(a.grantee) end;
