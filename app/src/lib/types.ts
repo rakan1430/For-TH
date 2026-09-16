@@ -31,6 +31,7 @@ export interface Profile {
   full_name: string;
   grade: string | null;
   contact: string | null;
+  school: string | null;
 }
 
 export interface Plan {

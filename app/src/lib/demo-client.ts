@@ -209,6 +209,8 @@ function visible<T extends { track?: string; is_published?: boolean }>(
 
 const RPC: Record<string, (args: Row) => unknown> = {
   is_teacher: () => isTeacher(),
+  // وضع العرض يبدأ بملفٍّ مكتمل: شاشة الإكمال ليست ما جاء الزائر ليراه
+  profile_complete: () => true,
 
   teacher_overview: () => (["qudurat", "tahsili"] as const).map((t) => {
     const d = new Date().toISOString().slice(0, 10);

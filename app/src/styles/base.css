@@ -135,20 +135,6 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: var(--u) 0; }
 }
 .btn--google svg { flex: none; }
 
-/* فاصل «أو» بين طريقتَي الدخول */
-.or {
-  display: flex;
-  align-items: center;
-  gap: var(--u-half);
-  color: var(--text-3);
-  font-size: 14px;
-}
-.or::before, .or::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
 
 
 /* ---- الحقول ------------------------------------------------------------- */

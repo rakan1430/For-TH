@@ -2,14 +2,17 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { DEMO, isConfigured, onSession, supabase } from "./lib/supabase";
 import { readNext, stripNext } from "./lib/oauth";
-import { amITeacher, activeTracks, ensureProfile, mySubscriptions } from "./lib/api";
+import {
+  amITeacher, activeTracks, ensureProfile, getMyProfile, isProfileComplete, mySubscriptions,
+} from "./lib/api";
 import { takeName } from "./lib/pending-name";
 import { pickName } from "./lib/profile-name";
-import type { Subscription, Track } from "./lib/types";
+import type { Profile, Subscription, Track } from "./lib/types";
 import { match, navigate, useRoute } from "./lib/router";
 import { Brand } from "./components/Logo";
 import { Empty, Notice, ThemeToggle } from "./components/ui";
 import { Setup } from "./screens/Setup";
+import { ProfileSetup } from "./screens/ProfileSetup";
 import { DemoBanner } from "./components/DemoBanner";
 import { Auth } from "./screens/Auth";
 import { Plans } from "./screens/Plans";
@@ -24,6 +27,8 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [isTeacher, setIsTeacher] = useState(false);
   const [subs, setSubs] = useState<Subscription[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [complete, setComplete] = useState(true);
   const [track, setTrack] = useState<Track>("qudurat");
   const [error, setError] = useState<string | null>(null);
 
@@ -77,8 +82,12 @@ export default function App() {
         );
 
     prepare
-      .then(() => Promise.all([amITeacher(), mySubscriptions()]))
-      .then(([t, s]) => {
+      .then(() => Promise.all([
+        amITeacher(), mySubscriptions(), isProfileComplete(), getMyProfile(),
+      ]))
+      .then(([t, s, done, prof]) => {
+        setComplete(done);
+        setProfile(prof);
         setIsTeacher(t);
         setSubs(s);
         const live = activeTracks(s);
@@ -96,6 +105,24 @@ export default function App() {
     return route === "/plans"
       ? <Shell onSignOut={null}><Plans signedIn={false} /></Shell>
       : <Auth />;
+  }
+
+  /*
+   * ⚠️ بوّابة إكمال الملفّ — للطالب وحده. المعلّم لا «مستوى دراسيّ» له ولا
+   *    مدرسة، فاشتراطهما عليه يحبسه خارج لوحته بلا معنى.
+   *
+   * ⚠️ وهي **تهذيبٌ لا حراسة**: الحارس أنّ `request_subscription` ترفض بملفٍّ
+   *    ناقص. فلو أُزيلت هذه الشاشة كلّها لما استطاع أحدٌ الاشتراك ببياناتٍ
+   *    ناقصة — وذلك هو الفرق بين شاشةٍ تُخفي وقاعدةٍ تمنع.
+   */
+  if (!isTeacher && !complete) {
+    return (
+      <ProfileSetup
+        userId={session.user.id}
+        profile={profile}
+        onDone={() => setComplete(true)}
+      />
+    );
   }
 
   const live = activeTracks(subs);

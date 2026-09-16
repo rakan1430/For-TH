@@ -28,7 +28,8 @@ export async function getMyProfile(): Promise<Profile | null> {
 }
 
 export async function upsertMyProfile(p: {
-  id: string; full_name: string; grade?: string | null; contact?: string | null;
+  id: string; full_name: string;
+  grade?: string | null; contact?: string | null; school?: string | null;
 }): Promise<void> {
   const { error } = await requireClient().from("profiles").upsert(p);
   if (error) throw error;
@@ -48,6 +49,19 @@ export async function upsertMyProfile(p: {
 export async function ensureProfile(userId: string, fullName: string): Promise<void> {
   if (await getMyProfile()) return;
   await upsertMyProfile({ id: userId, full_name: fullName });
+}
+
+/**
+ * هل اكتمل ملفّ المستخدم؟
+ *
+ * ⚠️ تُسأل **القاعدة** ولا يُعاد حساب الشرط هنا. ولو كُتب التعريف في الواجهة
+ *    أيضاً لصار تعريفان يفترقان بمرور الوقت: شاشةٌ تقول «أكملتَ» وقاعدةٌ
+ *    ترفض الطلب، أو أسوأ — قاعدةٌ تقبل ما لم تجمعه الشاشة.
+ */
+export async function isProfileComplete(): Promise<boolean> {
+  const { data, error } = await requireClient().rpc("profile_complete");
+  if (error) throw error;
+  return Boolean(data);
 }
 
 export async function amITeacher(): Promise<boolean> {

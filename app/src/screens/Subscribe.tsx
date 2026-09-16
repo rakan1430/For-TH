@@ -60,6 +60,10 @@ export function Subscribe({ track, planId, userId }: { track: Track; planId: str
           setError("مسار التحويل يحتاج صورة إيصال.");
         } else if (res.reason === "plan_not_found") {
           setError("الخطّة غير متاحة الآن.");
+        } else if (res.reason === "profile_incomplete") {
+          // الحارس في الأسفل ردّ. ولا تصل هذه عادةً — البوّابة تسبقها —
+          // لكنّها تصل لمن تجاوز الشاشة، ولمن نقص ملفّه بعد أن اكتمل.
+          setError("بياناتك غير مكتملة: الاسم والمستوى والجوّال والمدرسة. أكملها ثم أعد المحاولة.");
         } else {
           setError(`تعذّر إرسال الطلب (${res.reason}).`);
         }

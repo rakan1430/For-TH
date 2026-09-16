@@ -31,6 +31,8 @@ is_assigned(item_type_t,uuid)|authenticated|definer
 #    بـ`definer` في هذا الفحص فذلك انحدارٌ يُردّ.
 is_identified()|authenticated|invoker
 google_verified(integer)|authenticated|invoker
+# واكتمال الملفّ يُعرَّف مرّةً في القاعدة وتقرؤه الواجهة — لا تعريفان يفترقان.
+profile_complete()|authenticated|invoker
 
 # ── نافذة الهوية للعمليات الخطرة ──────────────────────────────────────────
 confirm_identity()|authenticated|definer
