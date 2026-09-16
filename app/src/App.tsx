@@ -20,6 +20,7 @@ import { Subscribe } from "./screens/Subscribe";
 import { Student } from "./screens/Student";
 import { QuizRunner } from "./screens/QuizRunner";
 import { Teacher } from "./screens/Teacher";
+import { Account } from "./screens/Account";
 
 export default function App() {
   const route = useRoute();
@@ -29,6 +30,13 @@ export default function App() {
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [complete, setComplete] = useState(true);
+  /*
+   * ⚠️ «لم تُقرأ بعد» ≠ «لا توجد». ولولا هذا العلم لرُسمت الشاشات ببياناتٍ
+   *    فارغة قبل وصولها: المعلّم يُرسم طالباً للحظة، وشاشة «حسابي» تُفتح
+   *    بحقولٍ خاوية — فمن ضغط «حفظ» قبل وصول القراءة **محا اسمه ومدرسته
+   *    بفراغ**. نموذجٌ يُملأ من بياناتٍ لم تصل بعد بابُ فقدٍ لا وميضُ عرض.
+   */
+  const [loaded, setLoaded] = useState(false);
   const [track, setTrack] = useState<Track>("qudurat");
   const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +74,8 @@ export default function App() {
   const userMeta = session?.user.user_metadata;
 
   useEffect(() => {
-    if (!userId) { setIsTeacher(false); setSubs([]); return; }
+    if (!userId) { setIsTeacher(false); setSubs([]); setLoaded(false); return; }
+    setLoaded(false);
     /*
      * ⚠️ إصلاحٌ ذاتيّ: أيّ حسابٍ بلا صفّ `profiles` لا يستطيع صاحبه طلب
      *    اشتراك — المفتاح الأجنبي يمنعه. وقد يقع ذلك لمن سجّل قبل إصلاح
@@ -92,8 +101,11 @@ export default function App() {
         setSubs(s);
         const live = activeTracks(s);
         if (live.length > 0 && live[0]) setTrack(live[0]);
+        setLoaded(true);
       })
-      .catch((e) => setError(String(e?.message ?? e)));
+      // ⚠️ يُرفع العلم عند الفشل أيضاً، وإلّا بقيت الصفحة على «…» أبداً
+      //    بلا رسالة — وهو أسوأ من خطأٍ ظاهر.
+      .catch((e) => { setError(String(e?.message ?? e)); setLoaded(true); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
@@ -105,6 +117,14 @@ export default function App() {
     return route === "/plans"
       ? <Shell onSignOut={null}><Plans signedIn={false} /></Shell>
       : <Auth />;
+  }
+
+  if (!loaded) {
+    return (
+      <Shell onSignOut={null} signedIn={false}>
+        <p className="muted">…</p>
+      </Shell>
+    );
   }
 
   /*
@@ -130,7 +150,11 @@ export default function App() {
   const subMatch = match("/subscribe/:track/:planId", route);
 
   return (
-    <Shell onSignOut={DEMO ? null : () => void supabase?.auth.signOut()} isTeacher={isTeacher}>
+    <Shell
+      onSignOut={DEMO ? null : () => void supabase?.auth.signOut()}
+      isTeacher={isTeacher}
+      signedIn
+    >
       {error ? <Notice kind="error">{error}</Notice> : null}
 
       {route === "/plans" ? <Plans signedIn /> : null}
@@ -140,6 +164,28 @@ export default function App() {
           track={subMatch.track as Track}
           planId={subMatch.planId!}
           userId={session.user.id}
+        />
+      ) : null}
+
+      {route === "/account" ? (
+        <Account
+          userId={session.user.id}
+          email={session.user.email ?? ""}
+          profile={profile}
+          isTeacher={isTeacher}
+          subs={subs}
+          /*
+           * ⚠️ تُحدَّث الحالة هنا بلا إعادة جلب: `profiles` صفٌّ واحد كتبناه
+           *    للتوّ ونعرف محتواه. وإعادة الجلب تُومض الشاشة وتُعيد رسم كل
+           *    شيء لتؤكّد ما نعلمه.
+           */
+          onSaved={(d) => setProfile((prev) => prev && {
+            ...prev,
+            full_name: d.fullName.trim(),
+            grade:   isTeacher ? prev.grade   : d.grade.trim(),
+            school:  isTeacher ? prev.school  : d.school.trim(),
+            contact: d.contact.trim(),
+          })}
         />
       ) : null}
 
@@ -182,10 +228,16 @@ function NoSubscription() {
   );
 }
 
-function Shell({ children, onSignOut, isTeacher }: {
+function Shell({ children, onSignOut, isTeacher, signedIn }: {
   children: React.ReactNode;
   onSignOut: (() => void) | null;
   isTeacher?: boolean;
+  /*
+   * ⚠️ علمٌ صريح لا استدلالٌ من `onSignOut`: وضع العرض يُخفي زرّ الخروج
+   *    والمستخدم فيه «داخل» — فلو قيس الدخول بوجود الزرّ لاختفى رابط
+   *    الحساب في وضع العرض وحده، وهو أوّل ما يُفتح لاستعراض المنصّة.
+   */
+  signedIn?: boolean;
 }) {
   return (
     <>
@@ -206,6 +258,11 @@ function Shell({ children, onSignOut, isTeacher }: {
               الاشتراك
             </button>
           )}
+          {signedIn ? (
+            <button type="button" className="tab" onClick={() => navigate("/account")}>
+              حسابي
+            </button>
+          ) : null}
           <ThemeToggle />
           {onSignOut ? (
             <button type="button" className="btn btn--quiet btn--sm" onClick={onSignOut}>

@@ -206,6 +206,18 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: var(--u) 0; }
 }
 .brand { display: flex; align-items: center; gap: var(--u-half); font-family: var(--font-title); font-weight: 800; }
 
+/*
+ * ⚠️ على الشاشات الضيّقة يُطوى **اسم** المنصّة وتبقى علامتها. صار الشريط
+ *    يحمل تبويبين وزرَّين بعد إضافة «حسابي»، فكان الاسم ينكسر سطرين ويدفع
+ *    ما بعده. والعلامة وحدها تكفي للعودة إلى الرئيسية، والاسم ظاهرٌ في كل
+ *    شاشةٍ أخرى — فلا يضيع شيء.
+ */
+@media (max-width: 460px) {
+  .appbar__inner { padding-inline: var(--u-half); gap: var(--u-qtr); }
+  .brand > span { display: none; }
+  .tab { padding-inline: var(--u-qtr); }
+}
+
 .tabs { display: flex; gap: var(--u-qtr); flex-wrap: wrap; }
 .tab {
   min-height: var(--touch); padding: 0 var(--u-half);
