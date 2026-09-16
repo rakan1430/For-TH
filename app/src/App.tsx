@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { DEMO, isConfigured, supabase } from "./lib/supabase";
-import { amITeacher, activeTracks, mySubscriptions } from "./lib/api";
+import { amITeacher, activeTracks, ensureProfile, mySubscriptions } from "./lib/api";
+import { takeName } from "./lib/pending-name";
 import type { Subscription, Track } from "./lib/types";
 import { match, navigate, useRoute } from "./lib/router";
 import { Brand } from "./components/Logo";
@@ -35,7 +36,18 @@ export default function App() {
 
   useEffect(() => {
     if (!session) { setIsTeacher(false); setSubs([]); return; }
-    Promise.all([amITeacher(), mySubscriptions()])
+    /*
+     * ⚠️ إصلاحٌ ذاتيّ: أيّ حسابٍ بلا صفّ `profiles` لا يستطيع صاحبه طلب
+     *    اشتراك — المفتاح الأجنبي يمنعه. وقد يقع ذلك لمن سجّل قبل إصلاح
+     *    شاشة التسجيل، أو لمن ضاع تخزين متصفّحه. فيُستدرك هنا **بعد**
+     *    وجود الجلسة، حيث تسمح السياسة بالكتابة.
+     */
+    const prepare = DEMO
+      ? Promise.resolve()
+      : ensureProfile(session.user.id, session.user.email ?? "", takeName());
+
+    prepare
+      .then(() => Promise.all([amITeacher(), mySubscriptions()]))
       .then(([t, s]) => {
         setIsTeacher(t);
         setSubs(s);

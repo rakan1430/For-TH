@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { requireClient } from "../lib/supabase";
+import { authErrorMessage } from "../lib/auth-errors";
+import { stashName, takeName } from "../lib/pending-name";
+import { ensureProfile } from "../lib/api";
 import { Brand } from "../components/Logo";
 import { Field, Notice, ThemeToggle } from "../components/ui";
 import { navigate } from "../lib/router";
@@ -23,18 +26,34 @@ export function Auth() {
       if (mode === "signup") {
         const { data, error } = await sb.auth.signUp({ email, password });
         if (error) throw error;
-        if (data.user) {
+
+        /*
+         * ⚠️ فرقٌ جوهريّ سقط منّي أوّل مرّة: `signUp` تُعيد `user` بلا
+         *    `session` حين يكون تأكيد البريد مفعَّلاً. فالكتابة في
+         *    `profiles` حينها تجري بدور `anon` وترفضها السياسة — وكنتُ
+         *    لا أفحص خطأها، فيرى المستخدم «أُنشئ الحساب» واسمُه ضائع.
+         *    الآن: نكتب إن وُجدت جلسة، وإلّا نحفظ الاسم حتى أوّل دخول.
+         */
+        stashName(fullName);
+        if (data.session && data.user) {
           // ملفّ المستخدم: صفّه هو، وسياسة الإدراج تشترط أن يكون معرّفه هو
-          await sb.from("profiles").upsert({ id: data.user.id, full_name: fullName });
+          await ensureProfile(data.user.id, email, takeName());
+          return; // الجلسة قائمة — يتكفّل `App` بالتوجيه
         }
-        setInfo("أُنشئ الحساب. إن طُلب تأكيد البريد فتحقّق من بريدك ثم سجّل الدخول.");
+
+        setInfo(
+          "أُنشئ الحساب، لكنّه ينتظر تأكيد البريد. إن لم تصلك رسالة خلال " +
+          "دقائق فأبلغ المعلّم ليؤكّده لك — لا تُعد إنشاء الحساب."
+        );
         setMode("signin");
       } else {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        // أوّل دخولٍ بعد تسجيلٍ انتظر التأكيد: الآن توجد جلسة، فيُكتب الملفّ
+        if (data.user) await ensureProfile(data.user.id, email, takeName());
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذّر إتمام العملية");
+      setError(authErrorMessage(err));
     } finally {
       setBusy(false);
     }

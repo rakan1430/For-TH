@@ -34,6 +34,27 @@ export async function upsertMyProfile(p: {
   if (error) throw error;
 }
 
+/**
+ * يضمن وجود صفّ `profiles` للمستخدم الحالي.
+ *
+ * ⚠️ تُستدعى بعد وجود **جلسة**، لا بعد `signUp`. فحين يكون تأكيد البريد
+ *    مفعَّلاً لا تُعيد `signUp` جلسةً، والكتابة حينها تجري بدور `anon`
+ *    فترفضها السياسة — وكان ذلك يمرّ بصمت ويضيع اسم المستخدم.
+ *
+ * ⚠️ والاسم الاحتياطي من البريد ليس تجميلاً: الاسم عمودٌ `not null` بطول
+ *    ٢ فأكثر، فمستخدمٌ بلا صفّ `profiles` لا يستطيع طلب اشتراك أصلاً —
+ *    المفتاح الأجنبي يمنعه. وحسابٌ لا يستطيع صاحبه الاشتراك به عطبٌ صامت.
+ */
+export async function ensureProfile(
+  userId: string, email: string, preferredName?: string | null,
+): Promise<void> {
+  const existing = await getMyProfile();
+  if (existing) return;
+  const candidate = (preferredName ?? "").trim() || (email.split("@")[0] ?? "").trim();
+  const full_name = candidate.length >= 2 ? candidate.slice(0, 120) : "مستخدم جديد";
+  await upsertMyProfile({ id: userId, full_name });
+}
+
 export async function amITeacher(): Promise<boolean> {
   const { data, error } = await requireClient().rpc("is_teacher");
   if (error) throw error;
