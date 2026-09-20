@@ -59,11 +59,16 @@ export function seed(): DemoDb {
       { id: "55555555-5555-5555-5555-555555555555", full_name: "نورة الدوسري", grade: "ثالث ثانوي", contact: "05xxxxxxx4" },
     ],
     // ⚠️ الأسعار NULL كما في القاعدة: لم يحدّدها المالك، وتظهر «[السعر]»
+    /*
+     * ⚠️ يطابق الإنتاج بعد قرار المالك: ثلاثة أشهر بـ١٥٠ ريالاً، والشهريّ
+     *    معطَّل. ووضعُ عرضٍ يُظهر خططاً لا وجود لها يُريه المالك منتجاً غير
+     *    منتجه — وهو ما جاء الوضع ليمنعه أصلاً.
+     */
     plans: [
-      { id: "p1", track: "qudurat", period: "monthly",   price_minor: null, currency: "SAR", is_active: true },
-      { id: "p2", track: "qudurat", period: "quarterly", price_minor: null, currency: "SAR", is_active: true },
-      { id: "p3", track: "tahsili", period: "monthly",   price_minor: null, currency: "SAR", is_active: true },
-      { id: "p4", track: "tahsili", period: "quarterly", price_minor: null, currency: "SAR", is_active: true },
+      { id: "p1", track: "qudurat", period: "monthly",   price_minor: null,  currency: "SAR", is_active: false },
+      { id: "p2", track: "qudurat", period: "quarterly", price_minor: 15000, currency: "SAR", is_active: true },
+      { id: "p3", track: "tahsili", period: "monthly",   price_minor: null,  currency: "SAR", is_active: false },
+      { id: "p4", track: "tahsili", period: "quarterly", price_minor: 15000, currency: "SAR", is_active: true },
     ],
     subscriptions: [
       { id: "s1", student_id: DEMO_STUDENT, track: "qudurat", starts_on: plus(-12), ends_on: plus(18), is_revoked: false },

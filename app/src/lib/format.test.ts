@@ -103,10 +103,30 @@ describe("السعر: لا يُخترع رقم", () => {
   it("والصفر سعرٌ حقيقيّ لا غياب سعر — فرقٌ يهمّ", () => {
     const p = formatPrice(0);
     expect(p.kind).toBe("amount");
-    expect(p.text).toContain("0.00");
+    expect(p.text).toBe("0 ريالاً");
   });
   it("والقيمة بالهللات تُعرض بالريالات", () => {
-    expect(formatPrice(15000).text).toBe("150.00 ريال");
+    expect(formatPrice(15000).text).toBe("150 ريالاً");
+  });
+
+  /*
+   * ⚠️ نفس درس «١٨ أيام»: العربية خمس حالات لا اثنتان. والسعر أظهر ما في
+   *    صفحة الاشتراك — خطأٌ نحويّ فيه يُقرأ قبل أي شيءٍ آخر.
+   */
+  it("وصيغة «ريال» تتبع العدد", () => {
+    expect(formatPrice(100).text).toBe("1 ريال");
+    expect(formatPrice(200).text).toBe("2 ريالان");
+    expect(formatPrice(500).text).toBe("5 رِيالات");
+    expect(formatPrice(1100).text).toBe("11 ريالاً");
+  });
+
+  /*
+   * ⚠️ الكسور عند الحاجة وحدها: سعرٌ مستدير بكسرين صفريّين يبدو نسخةً من
+   *    نظامٍ محاسبيّ لا سعراً على بطاقة.
+   */
+  it("ولا تظهر كسورٌ صفرية", () => {
+    expect(formatPrice(15000).text).not.toContain(".00");
+    expect(formatPrice(15050).text).toContain("150.5");
   });
 });
 

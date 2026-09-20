@@ -113,7 +113,7 @@ reset role;
 insert into public.subscription_requests (id, student_id, track, plan_id, full_name, grade, contact, method, receipt_path)
 select '0b000000-0000-0000-0000-00000000000f', '66666666-6666-6666-6666-666666666666', 'qudurat',
        p.id, 'طالب بلا اشتراك', 'أول ثانوي', '0500000005', 'transfer', 'receipts/66/r.jpg'
-from public.plans p where p.track='qudurat' and p.period='monthly';
+from public.plans p where p.track='qudurat' and p.period='quarterly';
 
 -- ⚠️ يُقاس قبل تبديل الدور: `authenticated` لا يقرأ `private` إطلاقاً —
 --    وهذا في ذاته حارسٌ مقصود، لا عائقٌ يُلتفّ عليه.
@@ -147,7 +147,7 @@ reset role;
 insert into public.subscription_requests (id, student_id, track, plan_id, full_name, grade, contact, method, receipt_path)
 select '0c000000-0000-0000-0000-00000000000f', '66666666-6666-6666-6666-666666666666', 'qudurat',
        p.id, 'طالب بلا اشتراك', 'أول ثانوي', '0500000005', 'transfer', 'receipts/66/r.jpg'
-from public.plans p where p.track='qudurat' and p.period='monthly';
+from public.plans p where p.track='qudurat' and p.period='quarterly';
 
 select set_config('request.jwt.claims', format(
   '{"sub":"11111111-1111-1111-1111-111111111111","email":"t@x.test",'

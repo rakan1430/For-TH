@@ -24,7 +24,12 @@ export function Plans({ signedIn }: { signedIn: boolean }) {
   if (error) return <Notice kind="error">{error}</Notice>;
   if (!plans) return <p className="muted">…</p>;
 
-  const undecided = plans.some((p) => p.price_minor === null);
+  /*
+   * ⚠️ على **الفعّالة** وحدها: الخطط المعطَّلة تبقى في الجدول بلا سعر (تشير
+   *    إليها طلباتٌ قديمة فلا تُحذف)، فقياسُ التنبيه عليها يُبقيه ظاهراً
+   *    أبداً — ويقول للطالب «الأسعار لم تُحدَّد» وهي أمامه محدَّدة.
+   */
+  const undecided = plans.some((p) => p.is_active && p.price_minor === null);
 
   return (
     <div className="stack">

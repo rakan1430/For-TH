@@ -31,8 +31,14 @@ begin;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
 set local role anon;
 
-select testing.eq(testing.count_of($q$ select 1 from public.plans $q$), 4,
-                  'الزائر: يرى الخطط الأربع — صفحة الأسعار تُقرأ قبل الدخول');
+-- ⚠️ الفعّالة وحدها: سياسة `plans_read_anon` شرطها `is_active`. وقد عُطِّلت
+--    الخطط الشهرية بقرار المالك (٠٠١٣) ولم تُحذف — فهي في الجدول ولا تظهر.
+--    وهذا الفحص يُثبت الشيئين معاً: أنّ صفحة الأسعار تُقرأ قبل الدخول، وأنّ
+--    ما عطّله المالك لا يُعرض على أحد.
+select testing.eq(testing.count_of($q$ select 1 from public.plans $q$), 2,
+                  'الزائر: يرى الخطّتين الفعّالتين — صفحة الأسعار تُقرأ قبل الدخول');
+select testing.eq(testing.count_of($q$ select 1 from public.plans where not is_active $q$), 0,
+                  'ولا يرى المعطَّلة ولو كانت في الجدول');
 select testing.eq(auth.uid(), null::uuid, 'الزائر: لا هوية له — NULL هادئة لا استثناء');
 
 -- ⚠️ لاحظ أنّ الردّ هنا **منعٌ** لا «صفر صفّ»: الزائر لا يملك صلاحية القراءة

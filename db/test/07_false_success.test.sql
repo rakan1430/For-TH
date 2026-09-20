@@ -74,7 +74,7 @@ set local role authenticated;
 do $$
 declare r1 record; r2 record; pid uuid;
 begin
-  select id into pid from public.plans where track='qudurat' and period='monthly';
+  select id into pid from public.plans where track='qudurat' and period='quarterly';
 
   select * into r1 from public.request_subscription(
     'qudurat', pid, 'طالب بلا اشتراك', 'أول ثانوي', '0500000005', 'transfer', 'receipts/66/r.jpg');

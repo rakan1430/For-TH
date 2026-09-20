@@ -53,7 +53,7 @@ select testing.eq((select max(ends_on) from public.subscriptions), current_date 
 reset role;
 insert into public.subscription_requests (student_id, track, plan_id, full_name, contact, method, receipt_path)
 select '22222222-2222-2222-2222-222222222222', 'tahsili', p.id, 'طالب القدرات', '0500000001', 'transfer', 'receipts/22/r.jpg'
-from public.plans p where p.track = 'tahsili' and p.period = 'monthly';
+from public.plans p where p.track = 'tahsili' and p.period = 'quarterly';
 select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
 set local role authenticated;
 

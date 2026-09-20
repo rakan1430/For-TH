@@ -79,10 +79,39 @@ export type Price =
   | { kind: "placeholder"; text: string }
   | { kind: "amount"; text: string };
 
+/*
+ * ⚠️ مُنسّقان لا واحد، وهذا الفصل مقصود: كان `MONEY_FMT` مشتركاً بين السعر
+ *    والدرجة، فتغييرٌ في صيغة السعر غيّر «٧٫٠٠ من ١٠٫٠٠» إلى «٧ من ١٠»
+ *    بلا أن يقصده أحد. كشفه فحصُ الدرجات — ولولاه لمرّ.
+ *
+ *    الدرجة تُثبّت كسريها: `points numeric(6,2)`، والدرجات تصطفّ في أعمدة
+ *    فلا يجوز أن يتذبذب طولها. والسعر عكسه: «١٥٠ ريالاً» لا
+ *    «١٥٠٫٠٠ ريالاً» — سعرٌ مستدير بكسرين صفريّين يبدو نسخةً من نظامٍ
+ *    محاسبيّ لا سعراً على بطاقة. و«١٥٠٫٥٠» تظهر كاملةً لأنّ كسرها يحمل معنى.
+ */
+const PRICE_FMT = new Intl.NumberFormat(AR_LOCALE, {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
 const MONEY_FMT = new Intl.NumberFormat(AR_LOCALE, {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
+
+/**
+ * صيغة «ريال» الصحيحة مع العدد — نفس قاعدة `countLabel` (البند: «١٨ أيام»
+ * خطأ وصوابه «١٨ يوماً»).
+ *
+ * ⚠️ والسعر أظهر ما في الصفحة: خطأٌ نحويّ فيه يُقرأ قبل أي شيءٍ آخر.
+ */
+function riyalForm(amount: number): string {
+  if (amount === 1) return "ريال";
+  if (amount === 2) return "ريالان";
+  // ⚠️ الكسر يُعامل معاملة ما فوق العشرة: «١٥٠٫٥٠ ريالاً»
+  if (Number.isInteger(amount) && amount >= 3 && amount <= 10) return "رِيالات";
+  return "ريالاً";
+}
 
 /**
  * @param priceMinor القيمة بالوحدة الصغرى (هللات)، أو null إن لم تُحدَّد.
@@ -94,8 +123,9 @@ export function formatPrice(
   if (priceMinor === null || priceMinor === undefined) {
     return { kind: "placeholder", text: "[السعر]" };
   }
-  const label = currency === "SAR" ? "ريال" : currency;
-  return { kind: "amount", text: `${MONEY_FMT.format(priceMinor / 100)} ${label}` };
+  const amount = priceMinor / 100;
+  const label = currency === "SAR" ? riyalForm(amount) : currency;
+  return { kind: "amount", text: `${PRICE_FMT.format(amount)} ${label}` };
 }
 
 /** درجة من درجة: «٧٫٠٠ من ١٠٫٠٠» بأرقامٍ مصطفّة. */

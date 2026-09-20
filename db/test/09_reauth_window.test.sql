@@ -10,7 +10,7 @@ reset role;
 insert into public.subscription_requests (id, student_id, track, plan_id, full_name, grade, contact, method, receipt_path)
 select '0a000000-0000-0000-0000-00000000000f', '66666666-6666-6666-6666-666666666666', 'qudurat',
        p.id, 'طالب بلا اشتراك', 'أول ثانوي', '0500000005', 'transfer', 'receipts/66/r.jpg'
-from public.plans p where p.track='qudurat' and p.period='monthly';
+from public.plans p where p.track='qudurat' and p.period='quarterly';
 
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111"}', true);
 set local role authenticated;

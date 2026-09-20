@@ -35,11 +35,14 @@ on conflict do nothing;
 -- ---- الخطط ----
 -- ⚠️ `price_minor` يبقى NULL: الأسعار لم يحدّدها المالك. القيم هنا ليست
 --    «قيم فحصٍ مؤقّتة» ستُنسى وتصل الإنتاج — هي الحقيقة: لا سعر بعد.
-insert into public.plans (track, period, price_minor) values
-  ('qudurat', 'monthly',   null),
-  ('qudurat', 'quarterly', null),
-  ('tahsili', 'monthly',   null),
-  ('tahsili', 'quarterly', null)
+-- ⚠️ تطابق الإنتاج: ثلاثة أشهر بـ١٥٠ ريالاً (١٥٠٠٠ هللة)، والشهريّ معطَّل
+--    لا محذوف — `subscription_requests` تشير إليه، وحذفه يمحو سجلّ ما طلبه
+--    الطالب فعلاً.
+insert into public.plans (track, period, price_minor, is_active) values
+  ('qudurat', 'monthly',   null,  false),
+  ('qudurat', 'quarterly', 15000, true),
+  ('tahsili', 'monthly',   null,  false),
+  ('tahsili', 'quarterly', 15000, true)
 on conflict (track, period) do nothing;
 
 -- ---- الاشتراكات ----
