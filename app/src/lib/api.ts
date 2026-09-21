@@ -348,3 +348,69 @@ export async function listStudents(): Promise<Profile[]> {
   if (error) throw error;
   return data ?? [];
 }
+
+/* ------------------------- المراجعة بعد التسليم --------------------------- */
+
+export interface ReviewRow {
+  question_id: string;
+  q_position: number;
+  prompt: string | null;
+  prompt_image_path: string | null;
+  points: number;
+  explanation: string | null;
+  explanation_image_path: string | null;
+  chosen_option_id: string | null;
+  correct_option_id: string | null;
+  is_correct: boolean | null;
+  is_saved: boolean;
+}
+
+/**
+ * ⚠️ هذه هي الدالّة الوحيدة في المشروع التي تُخرج مفتاح الإجابة إلى الشبكة.
+ *    وشرطها في القاعدة: **سلّم** المستدعي محاولةً في هذا الاختبار. ولا تقبل
+ *    معرّف طالبٍ وسيطاً — تسأل عن المستدعي وحده.
+ */
+export async function attemptReview(attemptId: string): Promise<ReviewRow[]> {
+  const { data, error } = await requireClient()
+    .rpc("attempt_review", { p_attempt_id: attemptId });
+  if (error) throw error;
+  return (data ?? []) as ReviewRow[];
+}
+
+export interface SavedRow {
+  question_id: string;
+  quiz_id: string;
+  quiz_title: string;
+  track: Track;
+  prompt: string | null;
+  prompt_image_path: string | null;
+  explanation: string | null;
+  explanation_image_path: string | null;
+  correct_option_id: string | null;
+  note: string | null;
+  saved_at: string;
+}
+
+export async function mySavedQuestions(): Promise<SavedRow[]> {
+  const { data, error } = await requireClient().rpc("my_saved_questions");
+  if (error) throw error;
+  return (data ?? []) as SavedRow[];
+}
+
+export async function saveQuestion(
+  questionId: string, note?: string | null
+): Promise<{ ok: boolean; reason: string }> {
+  const { data, error } = await requireClient()
+    .rpc("save_question", { p_question_id: questionId, p_note: note ?? null });
+  if (error) throw error;
+  return (Array.isArray(data) ? data[0] : data) as { ok: boolean; reason: string };
+}
+
+export async function unsaveQuestion(
+  questionId: string
+): Promise<{ ok: boolean; reason: string }> {
+  const { data, error } = await requireClient()
+    .rpc("unsave_question", { p_question_id: questionId });
+  if (error) throw error;
+  return (Array.isArray(data) ? data[0] : data) as { ok: boolean; reason: string };
+}

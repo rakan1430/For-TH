@@ -38,6 +38,8 @@ export interface DemoDb {
   quiz_questions: { id: string; quiz_id: string; position: number; prompt: string; prompt_image_path: string | null; points: number }[];
   quiz_options: { id: string; question_id: string; position: number; label: string; image_path: string | null }[];
   answer_key: { question_id: string; option_id: string }[];
+  question_explanations: { question_id: string; body: string | null; image_path: string | null }[];
+  saved_questions: { student_id: string; question_id: string; note: string | null; saved_at: string }[];
   groups: { id: string; track: string; name: string; color: string; position: number }[];
   group_members: { group_id: string; student_id: string }[];
   assignments: { id: string; track: string; item_type: string; item_id: string; audience: string; group_id: string | null; student_id: string | null }[];
@@ -150,6 +152,14 @@ export function seed(): DemoDb {
       { question_id: "qq4", option_id: "o10" },
       { question_id: "qq5", option_id: "o12" },
     ],
+
+    /* ⚠️ شرحٌ على سؤالٍ واحد: وضع العرض يُري المالك **الحالة** لا كل
+       الحالات. وسؤالٌ بلا شرح يُظهر له أنّ الشرح اختياريّ. */
+    question_explanations: [
+      { question_id: "qq1", body: "اقسم طرفَي المعادلة على ٣، فتحصل على س = ٤.", image_path: null },
+    ],
+
+    saved_questions: [],
     groups: [
       { id: "g1", track: "qudurat", name: "متقدّم", color: "#85ABE6", position: 0 },
       { id: "g2", track: "qudurat", name: "تأسيس", color: "#5DC79B", position: 1 },

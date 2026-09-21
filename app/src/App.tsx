@@ -195,7 +195,15 @@ export default function App() {
           : <Notice kind="error">هذه الصفحة للمعلّم وحده.</Notice>
       ) : null}
 
-      {quizMatch ? <QuizRunner quizId={quizMatch.id!} track={track} /> : null}
+      {quizMatch ? (
+        <QuizRunner
+          quizId={quizMatch.id!}
+          track={track}
+          // ⚠️ بطاقة الطالب في شريط الاختبار تحمل اسمه — من ملفّه لا من
+          //    Google: هو ما صحّحه بالعربية عند إكمال بياناته.
+          studentName={profile?.full_name ?? ""}
+        />
+      ) : null}
 
       {route === "/" ? (
         isTeacher ? (

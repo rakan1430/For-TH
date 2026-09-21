@@ -1,0 +1,236 @@
+/* ===========================================================================
+   شاشة الاختبار — بتصميم مطابق لواجهة قياس
+   (ملحق «آلية الاختبارات»). واجهةٌ **واحدة** لكل اختبارات المنصّة: أيّ
+   تحسينٍ هنا يصيبها كلّها، ولا نسخة ثانية تتباعد مع الوقت.
+   =========================================================================== */
+
+.exam {
+  position: fixed;
+  inset: 0;
+  /* ⚠️ فوق شريط الموقع (`.appbar` عند 10): الاختبار **استيلاءٌ على الشاشة**
+     لا صفحةٌ داخل التطبيق. وبلا هذا يرسم الشريط فوقه فيحجب نصّ السؤال —
+     ظهر ذلك في أوّل لقطةٍ على شاشةٍ عريضة. */
+  z-index: 50;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  background: var(--bg);
+
+  /* ⚠️⚠️ الشريط الجانبي **على اليسار دائماً** وإن كانت الصفحة عربية: هكذا
+     هو في اختبار قياس الحقيقي، والطالب يتدرّب على الواجهة التي سيواجهها.
+     فيُثبَّت اتّجاه الحاوية ltr، ويُعاد rtl داخل كل عمودٍ على حدة ليُقرأ
+     محتواه طبيعياً. مطابقةُ الواجهة أولوية هنا لا تفصيلاً ثانوياً. */
+  direction: ltr;
+
+  /* الحشوة الآمنة للهاتف: الشريط مثبَّت، فيحمل بنفسه إزاحة أعلى الشاشة */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.exam__side,
+.exam__main { direction: rtl; min-width: 0; }
+
+/* ---- الشريط الجانبي ----------------------------------------------------- */
+.exam__side {
+  /* ⚠️⚠️ حدٌّ **فيزيائيّ** لا منطقيّ، وهذا ليس تساهلاً: الخصائص المنطقية
+     (`inset-inline-start` و`border-inline-end`) تُحسب باتّجاه **العنصر
+     نفسه** لا باتّجاه حاويته. وهذا العنصر `direction: rtl` (ليُقرأ محتواه)،
+     فتنقلب جهتاه: `inline-end` تصير اليسار، و`inline-start` تصير اليمين.
+     والشريط هنا **على اليسار دائماً بقرارٍ مقصود** (مطابقةً لواجهة قياس)،
+     فتُستعمل الجهات الفيزيائية صراحةً.
+
+     ووقع هذا فعلاً: كان `inset-inline-start: 0` على الهاتف يضع اللوحة
+     يميناً، فيبقى منها ٨٤px ظاهرةً فوق السؤال بعد انزياحها. قِيس في
+     المتصفّح ولم يُفترَض. */
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  overflow-y: auto;
+  padding: var(--u-half);
+  display: flex; flex-direction: column; gap: var(--u-half);
+}
+
+.exam__clock {
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: var(--u-qtr) var(--u-half);
+  text-align: center;
+}
+/* ⚠️ `display: block`: بلا هذا يتراكب العنوان على الرقم في سطرٍ واحد. */
+.exam__clock-label { display: block; font-size: 12px; color: var(--text-2); }
+.exam__clock-value {
+  display: block;
+  /* ⚠️ الأرقام لا تُقرأ من اليمين لليسار حتى في صفحةٍ عربية: «12:45»
+     معكوسةً تصير «45:12». */
+  direction: ltr;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 28px; font-weight: 500;
+  line-height: 1.2;
+}
+.exam__clock--urgent {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.exam__clock--urgent .exam__clock-value { color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .exam__clock--urgent { animation: exam-pulse 1.6s ease-in-out infinite; }
+}
+@keyframes exam-pulse { 50% { opacity: .72; } }
+
+.exam__who { font-size: 14px; }
+.exam__who b { display: block; }
+.exam__meta { font-size: 13px; color: var(--text-2); }
+.exam__meta b { color: var(--text-1); }
+
+/* ---- بطاقات الإحصاء ----------------------------------------------------- */
+.exam__stats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--u-qtr); }
+.exam__stat {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--u-qtr);
+  text-align: center;
+  background: var(--bg);
+}
+.exam__stat-n {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 20px; font-weight: 500; display: block;
+}
+.exam__stat-k { font-size: 12px; color: var(--text-2); }
+.exam__stat--ok    { border-color: var(--green); }
+.exam__stat--ok    .exam__stat-n { color: var(--green); }
+.exam__stat--warn  { border-color: var(--accent); }
+.exam__stat--warn  .exam__stat-n { color: var(--accent); }
+.exam__stat--flag  { border-color: var(--gold); }
+.exam__stat--flag  .exam__stat-n { color: var(--gold); }
+.exam__stat--info  { border-color: var(--blue); }
+.exam__stat--info  .exam__stat-n { color: var(--blue); }
+
+/* ---- لوحة أرقام الأسئلة ------------------------------------------------- */
+.exam__pad { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--u-qtr); }
+.exam__cell {
+  min-height: 44px;            /* هدف اللمس */
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 15px; font-weight: 500;
+  cursor: pointer;
+  display: grid; place-content: center;
+}
+.exam__cell--answered { border-color: var(--green); color: var(--green); }
+.exam__cell--flagged  { border-color: var(--gold);  color: var(--gold); }
+.exam__cell--correct  { border-color: var(--green); background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
+.exam__cell--wrong    { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+/* ⚠️ السؤال الحالي يُميَّز بحلقةٍ لا بلون: اللون محجوزٌ للحالة، ولو حمل
+   معنيين لما دلّ على أيّهما. */
+.exam__cell--current { outline: 3px solid var(--text-1); outline-offset: 2px; }
+.exam__cell:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+/* ---- المنطقة الرئيسية --------------------------------------------------- */
+.exam__main { display: flex; flex-direction: column; overflow: hidden; }
+.exam__bar {
+  display: flex; align-items: center; gap: var(--u-half);
+  padding: var(--u-qtr) var(--u-half);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.exam__counter {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 14px; color: var(--text-2);
+}
+
+/* ⚠️ مؤقّتٌ في الشريط العلوي للهاتف وحده: على الشاشة العريضة يظهر في
+   الشريط الجانبي كبيراً، وتكراره في الأعلى ضجيجٌ لا معلومة. */
+.exam__bar-clock { display: none; }
+@media (max-width: 860px) { .exam__bar-clock { display: inline; } }
+
+/* ⚠️ «A-» و«A+» تنعكسان في سياقٍ عربيّ فتصيران «-A» و«+A»: الخوارزمية
+   ثنائية الاتجاه تضع العلامة على الطرف الخطأ. فيُثبَّت اتّجاه المجموعة. */
+.exam__font { direction: ltr; }
+.exam__scroll { flex: 1; overflow-y: auto; padding: var(--u); }
+
+/* ⚠️⚠️ درسٌ من خطأ وقع فعلاً: `max-width` بلا `margin-inline: auto` — في
+   صفحة RTL يلتصق العمود المحدود بأقصى اليمين ويُترك على يساره فراغٌ واسع،
+   فيبدو الاختبار «محشوراً في الزاوية». والسبب سطرُ توسيطٍ واحد ناقص، لا
+   خطأٌ في المقاسات. ولا يظهر على شاشةٍ ضيّقة إطلاقاً. */
+.exam__q {
+  max-width: min(980px, 100%);
+  margin-inline: auto;
+  display: flex; flex-direction: column; gap: var(--u-half);
+}
+.exam__prompt { font-weight: 700; line-height: 2; margin: 0; }
+
+/* ---- الخيارات ----------------------------------------------------------- */
+.exam__opts { display: flex; flex-direction: column; gap: var(--u-half); }
+.exam__opt {
+  display: flex; align-items: flex-start; gap: var(--u-half);
+  width: 100%;
+  text-align: start;
+  padding: var(--u-half);
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-1);
+  font: inherit; font-family: var(--font-body);
+  cursor: pointer;
+}
+.exam__opt img { max-width: 100%; height: auto; }
+.exam__opt:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.exam__letter {
+  flex: none;
+  width: 32px; height: 32px;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+  display: grid; place-content: center;
+  font-family: var(--font-title); font-weight: 700; font-size: 15px;
+}
+.exam__opt--picked { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 8%, var(--surface)); }
+.exam__opt--picked .exam__letter { background: var(--gold); border-color: var(--gold); color: var(--bg); }
+.exam__opt--correct { border-color: var(--green); background: color-mix(in srgb, var(--green) 10%, var(--surface)); }
+.exam__opt--correct .exam__letter { background: var(--green); border-color: var(--green); color: var(--bg); }
+.exam__opt--wrong { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.exam__opt--wrong .exam__letter { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* ---- الشرح بعد التسليم -------------------------------------------------- */
+.exam__why {
+  border-inline-start: 4px solid var(--blue);
+  background: color-mix(in srgb, var(--blue) 8%, transparent);
+  border-start-end-radius: var(--radius);
+  border-end-end-radius: var(--radius);
+  padding: var(--u-half);
+}
+.exam__why-label {
+  display: block; margin-bottom: var(--u-qtr);
+  font-family: var(--font-title); font-weight: 800; font-size: 13px; color: var(--blue);
+}
+.exam__why p { margin: 0 0 var(--u-qtr); }
+.exam__why img { max-width: 100%; height: auto; }
+
+/* ---- التذييل ------------------------------------------------------------ */
+.exam__foot {
+  display: flex; align-items: center; gap: var(--u-half);
+  padding: var(--u-qtr) var(--u-half);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+/* ---- الهاتف: عمودٌ واحد، واللوحة تنطوي ---------------------------------- */
+/* ⚠️ ٣٠٠px شريطاً جانبياً على شاشة ٣٦٠px تترك ٦٠px للسؤال. فيصير الشريط
+   لوحةً تُفتح وتُغلق، ويبقى المؤقّت والعدّاد ظاهرين دائماً — وهما ما
+   يحتاجه الطالب لحظةً بلحظة. */
+@media (max-width: 860px) {
+  .exam { grid-template-columns: 1fr; }
+  .exam__side {
+    position: absolute; top: 0; bottom: 0; left: 0;
+    width: min(300px, 86vw); z-index: 5;
+    transform: translateX(-102%);
+    transition: transform var(--t-fast) ease;
+    box-shadow: 0 0 0 100vmax color-mix(in srgb, #000 0%, transparent);
+  }
+  .exam--side-open .exam__side { transform: translateX(0); }
+  .exam__scroll { padding: var(--u-half); }
+}
+@media (max-width: 860px) and (prefers-reduced-motion: reduce) {
+  .exam__side { transition: none; }
+}
+@media (min-width: 861px) { .exam__side-toggle { display: none; } }

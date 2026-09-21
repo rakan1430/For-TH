@@ -230,6 +230,82 @@ const RPC: Record<string, (args: Row) => unknown> = {
 
   confirm_identity: () => new Date().toISOString(),
 
+  /*
+   * ⚠️ المراجعة في وضع العرض تُحاكي **شرط** الإنتاج لا مخرجاته وحدها:
+   *    ترفض ما لم يُسلَّم. فلو اكتفى العرض بإظهار الصحيح دائماً لتعلّم
+   *    منه المالك توقّعاً مخالفاً لما سيراه طلّابه.
+   */
+  attempt_review: (a) => {
+    const at = db.quiz_attempts.find((x) => x.id === a["p_attempt_id"]);
+    if (!at || at.student_id !== uid()) throw new Error("لا محاولة بهذا المعرّف");
+    if (at.status !== "submitted") throw new Error("المراجعة بعد التسليم");
+    return db.quiz_questions
+      .filter((q) => q.quiz_id === at.quiz_id)
+      .sort((x, y) => x.position - y.position)
+      .map((q) => {
+        const ans = db.attempt_answers.find(
+          (x) => x.attempt_id === at.id && x.question_id === q.id);
+        const ex = db.question_explanations.find((x) => x.question_id === q.id);
+        return {
+          question_id: q.id,
+          q_position: q.position,
+          prompt: q.prompt,
+          prompt_image_path: q.prompt_image_path ?? null,
+          points: q.points,
+          explanation: ex?.body ?? null,
+          explanation_image_path: ex?.image_path ?? null,
+          chosen_option_id: ans?.option_id ?? null,
+          correct_option_id:
+            db.answer_key.find((k) => k.question_id === q.id)?.option_id ?? null,
+          is_correct: ans?.is_correct ?? null,
+          is_saved: db.saved_questions.some(
+            (x) => x.student_id === uid() && x.question_id === q.id),
+        };
+      });
+  },
+
+  save_question: (a) => {
+    const qid = String(a["p_question_id"]);
+    const ok = db.quiz_attempts.some((at) =>
+      at.student_id === uid() && at.status === "submitted" &&
+      db.quiz_questions.some((q) => q.id === qid && q.quiz_id === at.quiz_id));
+    if (!ok) return [{ ok: false, reason: "not_reviewable" }];
+    if (!db.saved_questions.some((x) => x.student_id === uid() && x.question_id === qid)) {
+      db.saved_questions.push({
+        student_id: uid(), question_id: qid,
+        note: (a["p_note"] as string) ?? null, saved_at: new Date().toISOString(),
+      });
+      save();
+    }
+    return [{ ok: true, reason: "saved" }];
+  },
+
+  unsave_question: (a) => {
+    const qid = String(a["p_question_id"]);
+    const i = db.saved_questions.findIndex(
+      (x) => x.student_id === uid() && x.question_id === qid);
+    if (i !== -1) { db.saved_questions.splice(i, 1); save(); }
+    return [{ ok: true, reason: "removed" }];
+  },
+
+  my_saved_questions: () =>
+    db.saved_questions
+      .filter((x) => x.student_id === uid())
+      .map((x) => {
+        const q = db.quiz_questions.find((y) => y.id === x.question_id)!;
+        const quiz = db.quizzes.find((y) => y.id === q.quiz_id)!;
+        const ex = db.question_explanations.find((y) => y.question_id === q.id);
+        return {
+          question_id: q.id, quiz_id: quiz.id, quiz_title: quiz.title, track: quiz.track,
+          prompt: q.prompt, prompt_image_path: q.prompt_image_path ?? null,
+          explanation: ex?.body ?? null, explanation_image_path: ex?.image_path ?? null,
+          correct_option_id:
+            db.answer_key.find((k) => k.question_id === q.id)?.option_id ?? null,
+          note: x.note, saved_at: x.saved_at,
+        };
+      })
+      .sort((m, n) => n.saved_at.localeCompare(m.saved_at)),
+
   // ⚠️ يُعيد العددين الصريحين كما تفعل الدالّة الحقيقية — فلا يتعلّم المالك
   //    من وضع العرض توقّعاً مخالفاً لما سيراه في الإنتاج.
   assign_items: (a) => {

@@ -1,14 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
-import { StoredImage } from "../components/StoredImage";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  attemptAnswers, listOptions, listQuestions, listQuizzes, myAttempts,
-  saveAnswer, startAttempt, submitAttempt,
+  attemptReview, listOptions, listQuestions, listQuizzes, myAttempts,
+  saveAnswer, saveQuestion, startAttempt, submitAttempt, unsaveQuestion,
+  type ReviewRow,
 } from "../lib/api";
 import type { Attempt, Option, Question, Quiz, Track } from "../lib/types";
-import { formatDateTime, formatPercent, formatScore } from "../lib/format";
+import { TRACK_SHORT } from "../lib/types";
+import { formatDate, formatPercent, formatScore } from "../lib/format";
+import { PLATFORM_NAME } from "../components/Logo";
 import { Icon } from "../components/Icon";
 import { Notice } from "../components/ui";
 import { navigate } from "../lib/router";
+import { ExamShell } from "./exam/ExamShell";
 
 const REFUSAL: Record<string, string> = {
   not_found: "الاختبار غير متاح.",
@@ -22,13 +25,16 @@ const REFUSAL: Record<string, string> = {
   already_submitted: "سُلِّمت هذه المحاولة من قبل.",
 };
 
-export function QuizRunner({ quizId, track }: { quizId: string; track: Track }) {
+export function QuizRunner({ quizId, track, studentName }: {
+  quizId: string; track: Track; studentName: string;
+}) {
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [past, setPast] = useState<Attempt[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [options, setOptions] = useState<Option[]>([]);
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [picked, setPicked] = useState<Record<string, string>>({});
+  const [review, setReview] = useState<ReviewRow[] | null>(null);
   const [result, setResult] = useState<
     { score: number | null; max: number | null; correct: number | null; total: number | null; late: boolean } | null
   >(null);
@@ -59,6 +65,22 @@ export function QuizRunner({ quizId, track }: { quizId: string; track: Track }) 
     return Math.max(0, Math.floor((new Date(attempt.expires_at).getTime() - now) / 1000));
   }, [attempt?.expires_at, now]);
 
+  /*
+   * ⚠️ انتهى الوقت ⇒ **تسليمٌ تلقائيّ** (ملحق الاختبارات §٣-أ). ولا يُترك
+   *    الطالب في شاشةٍ منتهية الصلاحية بلا فعل، فيضغط «تسليم» فيُردّ
+   *    بـ«انتهى الوقت» ولا يفهم لماذا احتُفظ بإجاباته أصلاً.
+   *
+   * ⚠️ و`useRef` حارسٌ لازم: المؤقّت يعيد الرسم كل ثانية، وبلا الحارس
+   *    يُستدعى التسليم مرّةً في كل ثانيةٍ بعد الصفر.
+   */
+  const autoSubmitted = useRef(false);
+  useEffect(() => {
+    if (remaining === 0 && attempt && !autoSubmitted.current) {
+      autoSubmitted.current = true;
+      void finish();
+    }
+  }, [remaining, attempt]);
+
   async function begin() {
     setBusy(true); setError(null);
     try {
@@ -67,12 +89,13 @@ export function QuizRunner({ quizId, track }: { quizId: string; track: Track }) 
         setError(REFUSAL[r.reason] ?? `تعذّر بدء المحاولة (${r.reason}).`);
         return;
       }
+      autoSubmitted.current = false;
       setAttempt({
         id: r.attempt_id, quiz_id: quizId, student_id: "", attempt_no: r.attempt_no ?? 1,
         status: "in_progress", started_at: new Date().toISOString(),
         expires_at: r.expires_at, submitted_at: null, score: null, max_score: null,
       });
-      setPicked({}); setResult(null);
+      setPicked({}); setResult(null); setReview(null);
     } catch (e) {
       setError(String((e as Error)?.message ?? e));
     } finally { setBusy(false); }
@@ -89,12 +112,13 @@ export function QuizRunner({ quizId, track }: { quizId: string; track: Track }) 
   async function finish() {
     if (!attempt) return;
     setBusy(true); setError(null);
+    const attemptId = attempt.id;
     try {
       const answers = questions.map((q) => ({
         question_id: q.id,
         option_id: picked[q.id] ?? null,
       }));
-      const r = await submitAttempt(attempt.id, answers);
+      const r = await submitAttempt(attemptId, answers);
       if (!r.ok) {
         setError(REFUSAL[r.reason] ?? `تعذّر التسليم (${r.reason}).`);
         return;
@@ -104,34 +128,78 @@ export function QuizRunner({ quizId, track }: { quizId: string; track: Track }) 
         correct: r.correct_count, total: r.question_count, late: r.late,
       });
       setAttempt(null);
+      // ⚠️ المراجعة تُقرأ من الخادم لا تُبنى محلّياً: الصحيح لم يصل الجهاز
+      //    قبل هذه اللحظة، وهو الشرط الأوّل في ملحق الاختبارات §٦.
+      setReview(await attemptReview(attemptId).catch(() => null));
       setPast(await myAttempts(quizId));
     } catch (e) {
       setError(String((e as Error)?.message ?? e));
     } finally { setBusy(false); }
   }
 
+  async function openReview(a: Attempt) {
+    setBusy(true); setError(null);
+    try {
+      const rows = await attemptReview(a.id);
+      setReview(rows);
+      setPicked(Object.fromEntries(
+        rows.filter((r) => r.chosen_option_id).map((r) => [r.question_id, r.chosen_option_id!])
+      ));
+      setResult({
+        score: a.score, max: a.max_score,
+        correct: rows.filter((r) => r.is_correct).length, total: rows.length, late: false,
+      });
+    } catch (e) {
+      setError(String((e as Error)?.message ?? e));
+    } finally { setBusy(false); }
+  }
+
+  async function toggleSave(questionId: string, save: boolean) {
+    const fn = save ? saveQuestion(questionId) : unsaveQuestion(questionId);
+    const r = await fn.catch(() => null);
+    if (!r || !r.ok) {
+      setError(r?.reason === "not_reviewable"
+        ? "لا يمكن حفظ سؤالٍ لم تُسلّم اختباره."
+        : "تعذّر تعديل أسئلة المراجعة.");
+      return;
+    }
+    setReview((rows) => rows && rows.map((x) =>
+      x.question_id === questionId ? { ...x, is_saved: save } : x));
+  }
+
   if (error && !quiz) return <Notice kind="error">{error}</Notice>;
   if (!quiz) return <p className="muted">…</p>;
 
+  /* ═══ الشاشة الكاملة: أثناء المحاولة، أو في المراجعة ═══ */
+  if (attempt || review) {
+    return (
+      <ExamShell
+        title={quiz.title}
+        subject={TRACK_SHORT[track]}
+        studentName={studentName}
+        teacherName={PLATFORM_NAME}
+        questions={questions}
+        options={options}
+        remaining={attempt ? remaining : null}
+        picked={picked}
+        review={review}
+        busy={busy}
+        onPick={(q, o) => void pick(q, o)}
+        onSubmit={() => void finish()}
+        onExit={() => { setAttempt(null); setReview(null); }}
+        onToggleSave={(q, s) => void toggleSave(q, s)}
+      />
+    );
+  }
+
+  /* ═══ شاشة المدخل: النتيجة والمحاولات السابقة والبدء ═══ */
   return (
     <div className="stack">
       <button type="button" className="btn btn--quiet btn--sm" onClick={() => navigate("/")}>
         <Icon name="chevron" size={16} /> رجوع
       </button>
 
-      <div className="row-between">
-        <h1>{quiz.title}</h1>
-        {remaining !== null ? (
-          <span className={remaining < 60 ? "tag tag--pen" : "tag"}>
-            <Icon name="clock" size={16} />
-            <span className="mono">
-              {String(Math.floor(remaining / 60)).padStart(2, "0")}:
-              {String(remaining % 60).padStart(2, "0")}
-            </span>
-          </span>
-        ) : null}
-      </div>
-
+      <h1>{quiz.title}</h1>
       {error ? <Notice kind="error">{error}</Notice> : null}
 
       {result ? (
@@ -140,164 +208,53 @@ export function QuizRunner({ quizId, track }: { quizId: string; track: Track }) 
           <p style={{ fontSize: "22px" }} className="mono">
             {formatScore(result.score, result.max)} · {formatPercent(result.score, result.max)}
           </p>
-          <p className="muted">
-            {result.correct} إجابة صحيحة من {result.total}
-          </p>
+          <p className="muted">{result.correct} إجابة صحيحة من {result.total}</p>
           {result.late ? (
             <Notice kind="info">
               سُلِّمت بعد انتهاء الوقت، فصُحِّحت الإجابات المحفوظة قبل انتهائه.
             </Notice>
           ) : null}
-          {quiz.retention === "permanent" ? (
-            <button className="btn btn--primary" onClick={begin} disabled={busy}>
-              إعادة الاختبار
-            </button>
-          ) : null}
         </div>
       ) : null}
 
-      {!attempt && !result ? (
-        <div className="card stack-s">
-          <p className="muted">
-            {quiz.retention === "permanent"
-              ? quiz.max_attempts === null
-                ? "اختبار مسجَّل: أعِده متى شئت، وكل محاولةٍ تُحفظ بدرجتها."
-                : `اختبار مسجَّل: حتى ${quiz.max_attempts} محاولات.`
-              : "اختبار مؤقّت: محاولةٌ لمرّة."}
-          </p>
-          <p className="subtle">{questions.length} سؤالاً</p>
-          <button className="btn btn--primary" onClick={begin} disabled={busy}>
-            {past.length > 0 ? "محاولة جديدة" : "ابدأ"}
-          </button>
-        </div>
-      ) : null}
+      <div className="card stack-s">
+        <p className="muted">
+          {quiz.retention === "permanent"
+            ? quiz.max_attempts === null
+              ? "اختبار مسجَّل: أعِده متى شئت، وكل محاولةٍ تُحفظ بدرجتها."
+              : `اختبار مسجَّل: حتى ${quiz.max_attempts} محاولات.`
+            : "اختبار مؤقّت: محاولةٌ لمرّة."}
+        </p>
+        <p className="subtle">{questions.length} سؤالاً</p>
+        <button className="btn btn--primary" onClick={() => void begin()} disabled={busy}>
+          {past.length > 0 ? "محاولة جديدة" : "ابدأ"}
+        </button>
+      </div>
 
-      {attempt ? (
-        <form className="stack" onSubmit={(e) => { e.preventDefault(); void finish(); }}>
-          <p className="subtle">المحاولة رقم {attempt.attempt_no}</p>
-          {questions.map((q, i) => (
-            <fieldset key={q.id} className="card stack-s" style={{ border: "1px solid var(--border)" }}>
-              <legend className="subtle">السؤال {i + 1} من {questions.length}</legend>
-              {q.prompt ? <p className="mono" style={{ fontSize: "17px" }}>{q.prompt}</p> : null}
-              {/*
-                ⚠️ سؤالٌ بصورة بلا نصّ حالةٌ عادية لا استثناء: أسئلة القدرات
-                   كثيراً ما تكون شكلاً هندسياً أو جدولاً مقصوصاً. فبديل النصّ
-                   يصف **موضع** الصورة لقارئ الشاشة، لا محتواها — ولا نعرفه.
-              */}
-              {q.prompt_image_path ? (
-                <StoredImage
-                  bucket="question-images"
-                  path={q.prompt_image_path}
-                  alt={`صورة السؤال ${i + 1}`}
-                  maxHeight={420}
-                />
-              ) : null}
-              <div className="stack-s">
-                {options.filter((o) => o.question_id === q.id).map((o, oi) => (
-                  <button
-                    key={o.id} type="button" className="choice" role="radio"
-                    aria-checked={picked[q.id] === o.id}
-                    onClick={() => void pick(q.id, o.id)}
-                  >
-                    <span className="stack-s" style={{ minWidth: 0, alignItems: "flex-start" }}>
-                      {o.label ? <span className="mono">{o.label}</span> : null}
-                      {o.image_path ? (
-                        <StoredImage
-                          bucket="question-images"
-                          path={o.image_path}
-                          alt={o.label || `صورة الخيار ${oi + 1}`}
-                          maxHeight={200}
-                        />
-                      ) : null}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-          ))}
-          <button className="btn btn--primary" disabled={busy}>
-            {busy ? "…" : "تسليم"}
-          </button>
-        </form>
-      ) : null}
-
-      {/*
-        ⚠️ كل المحاولات معروضة، لا آخرها. الاختبار المسجَّل يُعاد للتدريب،
-           والقيمة في رؤية التقدّم لا في رقمٍ واحد يدوس ما قبله.
-      */}
+      {/* ⚠️ المحاولات السابقة بمراجعتها: «يرى اختباراته السابقة ونتيجتها
+          والدخول لرؤية الأسئلة التي أخطأ بها» — طلب المالك حرفياً. */}
       {past.length > 0 ? (
         <section className="stack-s">
-          <h2>محاولاتك</h2>
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th className="num">المحاولة</th>
-                  <th>التاريخ</th>
-                  <th className="num">الدرجة</th>
-                  <th className="num">النسبة</th>
-                </tr>
-              </thead>
-              <tbody>
-                {past.filter((a) => a.status === "submitted").map((a) => (
-                  <tr key={a.id}>
-                    <td className="num">{a.attempt_no}</td>
-                    <td>{formatDateTime(a.submitted_at)}</td>
-                    <td className="num">{formatScore(a.score, a.max_score)}</td>
-                    <td className="num">{formatPercent(a.score, a.max_score)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Review attempts={past} questions={questions} options={options} />
+          <h2 style={{ fontSize: "18px" }}>محاولاتك السابقة</h2>
+          {past.map((a) => (
+            <div key={a.id} className="card row-between">
+              <span>
+                <b>المحاولة {a.attempt_no}</b>
+                <span className="subtle" style={{ display: "block", fontSize: "13px" }}>
+                  {a.submitted_at ? formatDate(a.submitted_at) : "لم تُسلَّم"}
+                  {a.score !== null ? ` · ${formatScore(a.score, a.max_score)}` : ""}
+                </span>
+              </span>
+              {a.status === "submitted" ? (
+                <button type="button" className="btn btn--quiet btn--sm"
+                        onClick={() => void openReview(a)} disabled={busy}>
+                  <Icon name="eye" size={16} /> مراجعة
+                </button>
+              ) : null}
+            </div>
+          ))}
         </section>
       ) : null}
-    </div>
-  );
-}
-
-/** مراجعة آخر محاولةٍ مُسلَّمة — الصحّة تظهر **بعد** التسليم لا قبله. */
-function Review({ attempts, questions, options }: {
-  attempts: Attempt[]; questions: Question[]; options: Option[];
-}) {
-  const last = attempts.find((a) => a.status === "submitted");
-  const [answers, setAnswers] = useState<Record<string, { option_id: string | null; is_correct: boolean | null }>>({});
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open || !last) return;
-    attemptAnswers(last.id).then((rows) => {
-      const m: Record<string, { option_id: string | null; is_correct: boolean | null }> = {};
-      for (const r of rows) m[r.question_id] = { option_id: r.option_id, is_correct: r.is_correct };
-      setAnswers(m);
-    }).catch(() => {});
-  }, [open, last]);
-
-  if (!last) return null;
-
-  return (
-    <div className="stack-s">
-      <button type="button" className="btn btn--quiet btn--sm" onClick={() => setOpen(!open)}>
-        {open ? "إخفاء المراجعة" : `مراجعة المحاولة ${last.attempt_no}`}
-      </button>
-      {open ? questions.map((q, i) => {
-        const a = answers[q.id];
-        return (
-          <div key={q.id} className="card stack-s">
-            <span className="subtle">السؤال {i + 1}</span>
-            {q.prompt ? <p className="mono">{q.prompt}</p> : null}
-            <div className="row">
-              {a?.is_correct === true
-                ? <span className="tag tag--ok"><Icon name="check" size={16} /> صحيحة</span>
-                : <span className="tag tag--pen"><Icon name="x" size={16} /> خاطئة</span>}
-              <span className="muted mono">
-                {options.find((o) => o.id === a?.option_id)?.label ?? "بلا إجابة"}
-              </span>
-            </div>
-          </div>
-        );
-      }) : null}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { initTheme } from "./lib/theme";
 import "./styles/base.css";
+import "./styles/exam.css";
 
 // النصّ في `index.html` ضبط السمة قبل أول رسم لمنع الوميض؛ وهذا يوحّد الحالة
 // (لون شريط المتصفّح، والقيمة المحفوظة) بعد إقلاع التطبيق.
