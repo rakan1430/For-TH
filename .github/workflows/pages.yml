@@ -8,6 +8,11 @@
 #
 # ⚠️ ولا حاجة لإعادة كتابة المسارات: التوجيه في التطبيق **بالشذرة**
 #    (`#/quiz/…`)، فلا يطلب المتصفّح من الخادم إلّا `index.html` وحده.
+#
+# ⚠️⚠️ ويُدفع المخرَج إلى فرع `gh-pages` **لا عبر `deploy-pages`**: مصدر
+#      الصفحات في هذا المستودع مضبوطٌ على الفرع لا على الإجراءات، وجرّبتُ
+#      `deploy-pages` فرسب. فالعمل مع الآليّة القائمة أصحّ من تغيير إعدادٍ
+#      خارج المستودع لا يراه من يقرأ الشفرة.
 name: معاينة صفحات GitHub
 
 on:
@@ -16,16 +21,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,12 +39,6 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
 
-      # `enablement: true` يُفعّل الصفحات على المستودع إن لم تكن مفعّلة،
-      # فلا تلزم ضغطةٌ يدوية في الإعدادات.
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
       - run: npm ci
         working-directory: app
 
@@ -50,16 +47,18 @@ jobs:
         env:
           VITE_BASE: /For-TH/
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: app/dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: دفع المخرَج إلى فرع gh-pages
+        working-directory: app/dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # ⚠️ خرائط المصدر لا تُنشر: ملفّاتٌ للتنقيح تضاعف حجم النشرة.
+          rm -f assets/*.map
+          # ⚠️ `.nojekyll` لازم: بدونه يتجاهل Jekyll كل ما يبدأ بشرطةٍ سفلية.
+          touch .nojekyll
+          git init -q
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "معاينة: ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:gh-pages
