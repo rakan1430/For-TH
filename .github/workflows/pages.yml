@@ -1,0 +1,65 @@
+# نشر المعاينة على صفحات GitHub.
+#
+# ⚠️ مؤقّتٌ ما دام رصيد Netlify ناضباً: الموقع الحيّ لا يستقبل نشراً، وهذه
+#    قناةٌ ثانية مجّانية بلا حدّ للمستودعات العامّة.
+#
+# ⚠️ و`VITE_BASE` لازمة: صفحات GitHub تخدم من `/For-TH/` لا من الجذر.
+#    وبدونها تُحمَّل الصفحة ولا تُحمَّل حزمتها، فتظهر بيضاء بلا رسالة خطأ.
+#
+# ⚠️ ولا حاجة لإعادة كتابة المسارات: التوجيه في التطبيق **بالشذرة**
+#    (`#/quiz/…`)، فلا يطلب المتصفّح من الخادم إلّا `index.html` وحده.
+name: معاينة صفحات GitHub
+
+on:
+  push:
+    branches: [claude/new-project-repositories-exeq9g]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # `enablement: true` يُفعّل الصفحات على المستودع إن لم تكن مفعّلة،
+      # فلا تلزم ضغطةٌ يدوية في الإعدادات.
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - run: npm ci
+        working-directory: app
+
+      - run: npm run build
+        working-directory: app
+        env:
+          VITE_BASE: /For-TH/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
