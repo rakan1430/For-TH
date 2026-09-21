@@ -286,3 +286,17 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: var(--u) 0; }
   .page { padding: var(--u) var(--u-half); }
   h1 { font-size: 25px; }
 }
+
+/* ---- دفتر أسئلة المراجعة ------------------------------------------------ */
+/* صفوف عرضٍ لا أزرار: السؤال هنا يُقرأ ولا يُجاب، فلا حالة «مختار». */
+.saved__opt {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--u-half);
+  padding: var(--u-half);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.saved__opt img { max-width: 100%; height: auto; }
+.saved__opt--correct {
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+}

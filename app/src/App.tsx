@@ -6,11 +6,12 @@ import {
   amITeacher, activeTracks, ensureProfile, getMyProfile, isProfileComplete, mySubscriptions,
 } from "./lib/api";
 import { takeName } from "./lib/pending-name";
+import { startPresence, stopPresence } from "./lib/presence";
 import { pickName } from "./lib/profile-name";
 import type { Profile, Subscription, Track } from "./lib/types";
 import { match, navigate, useRoute } from "./lib/router";
 import { Brand } from "./components/Logo";
-import { Empty, Notice, ThemeToggle } from "./components/ui";
+import { Notice, ThemeToggle } from "./components/ui";
 import { Setup } from "./screens/Setup";
 import { ProfileSetup } from "./screens/ProfileSetup";
 import { DemoBanner } from "./components/DemoBanner";
@@ -72,6 +73,17 @@ export default function App() {
   const userId = session?.user.id ?? null;
   const userEmail = session?.user.email ?? null;
   const userMeta = session?.user.user_metadata;
+
+  /*
+   * ⚠️ الحضور اللحظي يبدأ **لكل من دخل** لا للمعلّم وحده: الرقم مجموع من
+   *    في الغرفة، فلو لم يسجّل الطلّاب حضورهم لعدّ المعلّم نفسه فقط.
+   *    والعرض للمعلّم وحده في لوحته — تسجيلٌ للجميع، وعرضٌ لواحد.
+   */
+  useEffect(() => {
+    if (!userId) { stopPresence(); return; }
+    startPresence(userId);
+    return () => stopPresence();
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) { setIsTeacher(false); setSubs([]); setLoaded(false); return; }
@@ -145,7 +157,6 @@ export default function App() {
     );
   }
 
-  const live = activeTracks(subs);
   const quizMatch = match("/quiz/:id", route);
   const subMatch = match("/subscribe/:track/:planId", route);
 
@@ -205,34 +216,19 @@ export default function App() {
         />
       ) : null}
 
+      {/*
+        ⚠️⚠️ **لا بوّابة اشتراكٍ هنا**، وكانت هنا حتى اليوم. المنصّة صارت
+           مجّانية (ق-٤) فرفعت القاعدةُ الشرط، وبقيت هذه الشاشة على القديم:
+           من دخل بلا اشتراك — وهم الآن **كلّ الطلّاب** — كان يُردّ بـ«لا
+           اشتراك ساري» إلى صفحة أسعارٍ لا تلزمه، والقاعدة تحته مستعدّة أن
+           تعطيه كل شيء. ثالث موضعٍ ينفتح فيه الأسفل ويبقى الأعلى مغلقاً.
+      */}
       {route === "/" ? (
-        isTeacher ? (
-          <Teacher email={session.user.email ?? ""} />
-        ) : live.length === 0 ? (
-          <NoSubscription />
-        ) : (
-          <Student subs={subs.filter((s) => live.includes(s.track))} track={live.includes(track) ? track : live[0]!} onTrack={setTrack} />
-        )
+        isTeacher
+          ? <Teacher email={session.user.email ?? ""} />
+          : <Student subs={subs} track={track} onTrack={setTrack} />
       ) : null}
     </Shell>
-  );
-}
-
-function NoSubscription() {
-  return (
-    <div className="stack">
-      <h1>لا اشتراك ساري</h1>
-      <Empty>
-        <p>لا يوجد لديك اشتراكٌ ساري في أي مسار.</p>
-        <p className="subtle">
-          نتائجك السابقة — إن وُجدت — محفوظةٌ ولم تُحذف، وتعود إليك بتجديد
-          الاشتراك.
-        </p>
-      </Empty>
-      <button className="btn btn--primary" onClick={() => navigate("/plans")}>
-        عرض الاشتراكات
-      </button>
-    </div>
   );
 }
 

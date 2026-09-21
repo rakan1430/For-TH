@@ -4,6 +4,7 @@ import {
   listStudents, pendingRequests, signedUrl, teacherOverview,
 } from "../lib/api";
 import { requireClient } from "../lib/supabase";
+import { FALLBACK, onOnline } from "../lib/presence";
 import type { Bank, Group, Profile, SubscriptionRequest, Track, Audience } from "../lib/types";
 import { TRACKS, TRACK_LABEL, TRACK_SHORT } from "../lib/types";
 import type { Overview, AssignReport } from "../lib/api";
@@ -54,6 +55,7 @@ function OverviewPane() {
 
   return (
     <div className="stack">
+      <OnlineNow />
       <div className="grid-2">
         {rows.map((r) => (
           <article key={r.track} className="card stack-s">
@@ -73,6 +75,34 @@ function OverviewPane() {
       </div>
       <ExportSubscribers />
     </div>
+  );
+}
+
+/**
+ * «كم طالباً في موقعي الآن؟» — طلب المالك.
+ *
+ * ⚠️ الرقم **حيّ**: يهبط حين يُغلق أحدهم صفحته، بلا تحديثٍ ولا سؤالٍ
+ *    دوريّ. وهو غير «عدد المشتركين» في البطاقات تحته — ذاك تراكمٌ وهذا
+ *    لحظة.
+ *
+ * ⚠️ ولا يُبنى عليه قرار: زينةٌ لا حارس (انظر `lib/presence.ts`). ولهذا
+ *    لا رسالة خطأ له — عند أي تعثّر يبقى على بديله الآمن صامتاً.
+ */
+function OnlineNow() {
+  const [n, setN] = useState(FALLBACK);
+  useEffect(() => onOnline(setN), []);
+
+  return (
+    <article className="card row-between">
+      <span className="row">
+        <Icon name="users" />
+        <span className="stack-s" style={{ gap: 0 }}>
+          <b>المتصلون الآن</b>
+          <span className="subtle">من الموقع مفتوحٌ عنده هذه اللحظة</span>
+        </span>
+      </span>
+      <span className="mono" style={{ fontSize: "30px" }}>{n}</span>
+    </article>
   );
 }
 

@@ -387,6 +387,20 @@ const RPC: Record<string, (args: Row) => unknown> = {
     questions.forEach((qq, i) => {
       const qid = (qq["id"] as string) || crypto.randomUUID();
       keep.push(qid);
+
+      // الشرح: قبل حارس القفل — فالمقفل يُشرَح ولا يُعدَّل (٠٠١٦).
+      // و«غياب المفتاح غير خلوّه»: حمولةٌ لا تذكره لا تمسّه.
+      if ("explanation" in qq || "explanation_image_path" in qq) {
+        const body = String(qq["explanation"] ?? "").trim();
+        const img = (qq["explanation_image_path"] as string | null) ?? null;
+        db.question_explanations = db.question_explanations.filter((x) => x.question_id !== qid);
+        if (body || img) {
+          db.question_explanations.push({
+            question_id: qid, body: body || null, image_path: img,
+          });
+        }
+      }
+
       if (lockedIds.has(qid)) {
         const row = db.quiz_questions.find((x) => x.id === qid);
         if (row) row.position = i;

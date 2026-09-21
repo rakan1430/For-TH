@@ -1,20 +1,27 @@
 import { useEffect, useState } from "react";
 import {
-  bankItems, listBanks, listQuizzes, listResources, listSections, signedUrl,
+  bankItems, isActive, listBanks, listQuizzes, listResources, listSections, signedUrl,
 } from "../lib/api";
 import type { Bank, Quiz, Resource, Section, Subscription, Track } from "../lib/types";
-import { TRACK_SHORT } from "../lib/types";
-import { formatDate, daysUntil, countLabel } from "../lib/format";
+import { TRACKS, TRACK_SHORT } from "../lib/types";
+import { formatDate } from "../lib/format";
 import { Icon } from "../components/Icon";
 import { Empty, Notice } from "../components/ui";
 import { navigate } from "../lib/router";
+import { SavedQuestions } from "./SavedQuestions";
+
+/** أقسام صفحة الطالب: المحتوى، والاختبارات، ودفتر المراجعة. */
+type View = "content" | "exams" | "saved";
 
 /**
  * صفحة الطالب.
  *
  * ⚠️ لا شرط صلاحيةٍ في هذا الملفّ. ما يصل من القاعدة هو ما يحقّ له رؤيته:
- *    منشورٌ، في مسارٍ اشتراكه فيه ساري، ومُرسَلٌ إليه. ولو أُلغيت سطور
- *    الترشيح أدناه لما تسرّب صفٌّ واحد — الترشيح هنا **تبويبٌ لا حراسة**.
+ *    منشورٌ، ومرئيٌّ له. ولو أُلغيت سطور الترشيح أدناه لما تسرّب صفٌّ
+ *    واحد — الترشيح هنا **تبويبٌ لا حراسة**.
+ *
+ * ⚠️ والمساران يُعرضان دائماً، لا «ما اشترك فيه». صار المسار **تبويب
+ *    عرضٍ** لا حقّاً يُملك، يوم صارت المنصّة مجّانية (ق-٤).
  */
 export function Student({ subs, track, onTrack }: {
   subs: Subscription[]; track: Track; onTrack: (t: Track) => void;
@@ -26,8 +33,8 @@ export function Student({ subs, track, onTrack }: {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const activeTracks = subs.filter((s) => !s.is_revoked).map((s) => s.track);
-  const sub = subs.find((s) => s.track === track);
+  const [view, setView] = useState<View>("content");
+  const sub = subs.find((s) => s.track === track && isActive(s));
 
   useEffect(() => {
     let alive = true;
@@ -42,13 +49,22 @@ export function Student({ subs, track, onTrack }: {
     return () => { alive = false; };
   }, [track]);
 
-  const left = sub ? daysUntil(sub.ends_on) : 0;
-
   return (
     <div className="stack">
-      {activeTracks.length > 1 ? (
+      <div className="tabs" role="tablist" aria-label="أقسام الصفحة">
+        <button role="tab" className="tab" aria-selected={view === "content"}
+                onClick={() => setView("content")}>المحتوى</button>
+        <button role="tab" className="tab" aria-selected={view === "exams"}
+                onClick={() => setView("exams")}>الاختبارات</button>
+        <button role="tab" className="tab" aria-selected={view === "saved"}
+                onClick={() => setView("saved")}>أسئلة المراجعة</button>
+      </div>
+
+      {/* ⚠️ دفتر المراجعة يعبر المسارات — فيُخفى مبدّلُ المسار معه، ولا
+          يُترك زرّاً لا يفعل شيئاً. */}
+      {view !== "saved" ? (
         <div className="tabs" role="tablist" aria-label="المسار">
-          {activeTracks.map((t) => (
+          {TRACKS.map((t) => (
             <button key={t} role="tab" className="tab" aria-selected={t === track}
                     onClick={() => onTrack(t)}>
               {TRACK_SHORT[t]}
@@ -57,28 +73,38 @@ export function Student({ subs, track, onTrack }: {
         </div>
       ) : null}
 
+      {view === "saved" ? <SavedQuestions /> : null}
+
+      {view !== "saved" ? (
+        <>
       <div className="row-between">
         <h1>{TRACK_SHORT[track]}</h1>
+        {/* ⚠️ بلا لون إنذار: المنصّة مجّانية، فلا يسقط شيءٌ بانتهاء
+            الاشتراك. تبقى المعلومة لأنّها صحيحة، ويسقط الفزع لأنّه لم يعد. */}
         {sub ? (
-          <span className={left <= 7 ? "tag tag--pen" : "tag"}>
+          <span className="tag">
             <Icon name="clock" size={16} />
-            {left >= 0
-              ? `ينتهي ${formatDate(sub.ends_on)} — ${countLabel(left, {
-                  none: "ينتهي اليوم", one: "يبقى يوم واحد", two: "يبقى يومان",
-                  few: "أيام", many: "يوماً",
-                })}`
-              : `انتهى ${formatDate(sub.ends_on)}`}
+            ينتهي اشتراكك {formatDate(sub.ends_on)}
           </span>
         ) : null}
       </div>
 
       {error ? <Notice kind="error">{error}</Notice> : null}
       {loading ? <p className="muted">…</p> : null}
-
-      {!loading && banks.length === 0 && resources.length === 0 && quizzes.length === 0 ? (
-        <Empty>لم يصلك محتوىً في هذا المسار بعد.</Empty>
+        </>
       ) : null}
 
+      {view === "exams" && !loading ? (
+        <Exams quizzes={quizzes} banks={banks} />
+      ) : null}
+
+      {view === "content" && !loading
+        && banks.length === 0 && resources.length === 0 && quizzes.length === 0 ? (
+        <Empty>لم يُنشَر محتوىً في هذا المسار بعد.</Empty>
+      ) : null}
+
+      {view === "content" ? (
+        <>
       {/* المعلّم يقسّم الصفحة كما يريد: الأقسام عناوينه هو، لا بنيةٌ مفروضة */}
       {sections.map((section) => {
         const sBanks = banks.filter((b) => b.section_id === section.id);
@@ -115,6 +141,45 @@ export function Student({ subs, track, onTrack }: {
           </section>
         );
       })()}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * تبويب «الاختبارات» — طلب المالك: «إضافة اختبارات إلكترونية في تبويبٍ
+ * كاملٍ جديد».
+ *
+ * ⚠️ والقسمة بين «محاكية» و«تابعة لبنك» قسمةُ **مكان** لا نوع: الشاشة التي
+ *    تفتحها واحدة (ق-٦)، والاختبار المحاكي هو ما لم يوضع في بنك. ولا يُخترع
+ *    للطالب تصنيفٌ لا يعرفه المعلّم في محرّره.
+ */
+function Exams({ quizzes, banks }: { quizzes: Quiz[]; banks: Bank[] }) {
+  const standalone = quizzes.filter((q) => !q.bank_id);
+  const inBanks = banks
+    .map((b) => ({ bank: b, list: quizzes.filter((q) => q.bank_id === b.id) }))
+    .filter((g) => g.list.length > 0);
+
+  if (quizzes.length === 0) {
+    return <Empty>لا اختبارات في هذا المسار بعد.</Empty>;
+  }
+
+  return (
+    <div className="stack">
+      {standalone.length > 0 ? (
+        <section className="stack-s">
+          <h2>اختبارات محاكية</h2>
+          {standalone.map((q) => <QuizRow key={q.id} quiz={q} />)}
+        </section>
+      ) : null}
+
+      {inBanks.map(({ bank, list }) => (
+        <section key={bank.id} className="stack-s">
+          <h2>{bank.title}</h2>
+          {list.map((q) => <QuizRow key={q.id} quiz={q} />)}
+        </section>
+      ))}
     </div>
   );
 }

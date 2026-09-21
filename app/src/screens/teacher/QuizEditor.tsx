@@ -22,6 +22,7 @@ export function emptyQuiz(track: Track, bankId: string | null, position: number)
 function newQuestion(): DraftQuestion {
   return {
     id: null, prompt: "", prompt_image_path: null, points: 1,
+    explanation: null, explanation_image_path: null,
     options: [
       { label: "", is_correct: true },
       { label: "", is_correct: false },
@@ -362,6 +363,51 @@ function QuestionCard({
             <Icon name="plus" size={16} /> خيار
           </button>
         ) : null}
+      </div>
+
+      {/*
+        ⚠️ الشرح **غير معطَّلٍ مع القفل**، خلافاً لكل ما فوقه. والفرق مقصود:
+           القفل يحمي ما رآه الطالب وما يُصحَّح عليه، والشرح ليس منهما — بل
+           أحوج ما يكون المعلّم إلى كتابته بعد أن يرى من أخطأ فيه.
+      */}
+      <div className="stack-s">
+        <Field label="طريقة الحلّ — يراها الطالب بعد التسليم وحده">
+          <textarea
+            className="textarea mono" rows={2}
+            value={question.explanation ?? ""}
+            onChange={(e) => onPatch({ explanation: e.target.value })}
+            placeholder="اشرح الخطوات، أو ارفع صورةً بخطّ يدك" />
+        </Field>
+
+        <div className="row">
+          <label className={question.explanation_image_path ? "btn btn--sm" : "btn btn--quiet btn--sm"}
+                 style={{ cursor: "pointer",
+                          ...(question.explanation_image_path
+                              ? { borderColor: "var(--green)", color: "var(--green)" } : {}) }}>
+            <Icon name="image" size={16} />
+            {question.explanation_image_path ? "تغيير صورة الحلّ" : "صورة للحلّ"}
+            <input type="file" accept="image/*" hidden disabled={uploading}
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                setUploading(true);
+                try {
+                  onPatch({ explanation_image_path: await uploadQuestionImage(track, f) });
+                } finally { setUploading(false); e.target.value = ""; }
+              }} />
+          </label>
+          {question.explanation_image_path ? (
+            <button type="button" className="btn btn--quiet btn--sm"
+                    onClick={() => onPatch({ explanation_image_path: null })}
+                    title="إزالة صورة الحلّ"
+                    aria-label={`إزالة صورة حلّ السؤال ${index + 1}`}>
+              <Icon name="x" size={16} />
+            </button>
+          ) : null}
+          {locked ? (
+            <span className="subtle">الشرح وحده قابلٌ للتعديل في سؤالٍ له نتائج.</span>
+          ) : null}
+        </div>
       </div>
     </div>
   );

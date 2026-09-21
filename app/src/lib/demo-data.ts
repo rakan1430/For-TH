@@ -159,7 +159,12 @@ export function seed(): DemoDb {
       { question_id: "qq1", body: "اقسم طرفَي المعادلة على ٣، فتحصل على س = ٤.", image_path: null },
     ],
 
-    saved_questions: [],
+    // سؤالٌ في دفتر مراجعة الطالب: لولاه لظهر التبويب فارغاً في وضع العرض
+    // ولم يُرَ منه شيء.
+    saved_questions: [
+      { student_id: DEMO_STUDENT, question_id: "qq1", note: null,
+        saved_at: new Date(Date.now() - 864e5).toISOString() },
+    ],
     groups: [
       { id: "g1", track: "qudurat", name: "متقدّم", color: "#85ABE6", position: 0 },
       { id: "g2", track: "qudurat", name: "تأسيس", color: "#5DC79B", position: 1 },

@@ -129,11 +129,104 @@ export function Content() {
         onOpen={(id) => setMode({ kind: "bank", bankId: id })}
       />
 
+      <StandaloneQuizzes
+        quizzes={quizzes.filter((q) => !q.bank_id)}
+        groups={groups}
+        onAct={act}
+        onNew={() => setMode({
+          kind: "quiz", bankId: null,
+          draft: emptyQuiz(track, null, quizzes.filter((q) => !q.bank_id).length),
+        })}
+        onEdit={async (q) => {
+          try {
+            setMode({ kind: "quiz", bankId: null, draft: await A.loadQuizDraft(q) });
+          } catch (e) {
+            setError(String((e as Error)?.message ?? e));
+          }
+        }}
+      />
+
       <LooseResources
         resources={resources.filter((r) => !r.bank_id)}
         sections={sections} track={track} onAct={act}
       />
     </div>
+  );
+}
+
+/* ========================================================================== */
+
+/**
+ * الاختبارات المحاكية — اختبارٌ لا ينتمي إلى بنك.
+ *
+ * ⚠️ أبلغ المالك أنّ لوحة المعلّم **لا تحوي قائمةً للاختبارات المحاكية**
+ *    إطلاقاً: كان كل اختبارٍ يُنشأ من داخل بنكٍ ولا سبيل إلى اختبارٍ مستقلّ،
+ *    فالميزة موجودة في القاعدة ومغلقةٌ في الواجهة.
+ *
+ * ⚠️ ولا شاشة تحريرٍ ثانية له: هو `DraftQuiz` ببنكٍ `null` لا أكثر، ويُحرَّر
+ *    بالمحرّر نفسه ويُؤدّى بالشاشة نفسها (ق-٦).
+ */
+function StandaloneQuizzes({ quizzes, groups, onAct, onNew, onEdit }: {
+  quizzes: Quiz[]; groups: Group[];
+  onAct: (fn: () => Promise<unknown>, done?: string) => Promise<void>;
+  onNew: () => void;
+  onEdit: (q: Quiz) => void;
+}) {
+  const [open, setOpen] = useState<string | null>(null);
+
+  return (
+    <section className="card stack-s">
+      <h2 className="card__title">اختبارات محاكية</h2>
+      <p className="subtle">
+        اختبارٌ كاملٌ لا يتبع بنكاً — يراه الطالب في تبويب «الاختبارات».
+      </p>
+
+      {quizzes.length === 0 ? <p className="subtle">لا اختبارات محاكية بعد.</p> : null}
+
+      {quizzes.map((q) => (
+        <div key={q.id} className="stack-s">
+          <div className="row" style={{ gap: "var(--u-half)" }}>
+            <Icon name="quiz" />
+            <strong style={{ flex: "1 1 160px", minWidth: "140px" }}>{q.title}</strong>
+            <span className="tag">{q.retention === "permanent" ? "مسجَّل" : "مؤقّت"}</span>
+            {q.time_limit_minutes ? (
+              <span className="tag tag--muted">{q.time_limit_minutes} دقيقة</span>
+            ) : null}
+            <button type="button" className="btn btn--quiet btn--sm"
+                    title={q.is_published ? "منشور — اضغط لإلغاء النشر" : "مسودّة — اضغط للنشر"}
+                    style={q.is_published ? { borderColor: "var(--green)", color: "var(--green)" } : undefined}
+                    onClick={() => void onAct(
+                      () => A.updateQuiz(q.id, { is_published: !q.is_published }),
+                      q.is_published ? "أُلغي نشر الاختبار." : "نُشر الاختبار."
+                    )}>
+              <Icon name={q.is_published ? "eye" : "eyeOff"} size={16} />
+              {q.is_published ? "منشور" : "مسودّة"}
+            </button>
+            <button type="button" className="btn btn--sm" onClick={() => onEdit(q)}>
+              <Icon name="edit" size={16} /> تعديل
+            </button>
+            <button type="button" className="btn btn--quiet btn--sm"
+                    onClick={() => setOpen(open === q.id ? null : q.id)}>
+              <Icon name="send" size={16} /> إرسال
+            </button>
+            <button type="button" className="btn btn--quiet btn--sm"
+                    aria-label={`حذف ${q.title}`}
+                    onClick={() => void onAct(() => A.deleteQuiz(q.id))}>
+              <Icon name="trash" size={16} />
+            </button>
+          </div>
+          {open === q.id ? (
+            <SendBox itemType="quiz" itemId={q.id} track={q.track}
+                     groups={groups} published={q.is_published} />
+          ) : null}
+        </div>
+      ))}
+
+      <button type="button" className="btn btn--sm" style={{ alignSelf: "flex-start" }}
+              onClick={onNew}>
+        <Icon name="plus" size={16} /> اختبار محاكٍ جديد
+      </button>
+    </section>
   );
 }
 
@@ -442,9 +535,16 @@ function QuizRow({ quiz, api, onAct, onEdit }: {
       <Icon name="quiz" />
       <strong style={{ flex: "1 1 160px", minWidth: "140px" }}>{quiz.title}</strong>
       <span className="tag">{quiz.retention === "permanent" ? "مسجَّل" : "مؤقّت"}</span>
+      {/* ⚠️ كان هذا الزرّ **بلا `onClick`**: يبدو قابلاً للضغط ولا يفعل شيئاً،
+          فيظنّ المعلّم أنّه نشر ولم ينشر. والنشر أوّل ما يحتاجه، وهو عين
+          ما اشتكى منه المالك حين لم يرَ الطلّاب ما نشره. */}
       <button type="button" className="btn btn--quiet btn--sm"
-              title={quiz.is_published ? "منشور" : "مسودّة"}
-              style={quiz.is_published ? { borderColor: "var(--green)", color: "var(--green)" } : undefined}>
+              title={quiz.is_published ? "منشور — اضغط لإلغاء النشر" : "مسودّة — اضغط للنشر"}
+              style={quiz.is_published ? { borderColor: "var(--green)", color: "var(--green)" } : undefined}
+              onClick={() => void onAct(
+                () => A.updateQuiz(quiz.id, { is_published: !quiz.is_published }),
+                quiz.is_published ? "أُلغي نشر الاختبار." : "نُشر الاختبار."
+              )}>
         <Icon name={quiz.is_published ? "eye" : "eyeOff"} size={16} />
         {quiz.is_published ? "منشور" : "مسودّة"}
       </button>

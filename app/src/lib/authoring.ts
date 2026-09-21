@@ -170,6 +170,15 @@ export interface DraftQuestion {
   prompt_image_path?: string | null;
   points: number;
   options: DraftOption[];
+  /**
+   * شرح الحلّ — نصّاً أو صورة أو كليهما.
+   *
+   * ⚠️ **غياب المفتاح غير خلوّه** في الخادم: حمولةٌ لا تذكر الشرح لا تمسّه،
+   *    وحمولةٌ تذكره فارغاً تمحوه. ولهذا يُرسَلان دائماً ولو `null` — فمحو
+   *    المعلّم لما كتبه يجب أن يصل، ونسياننا للحقل يجب ألّا يمحو شيئاً.
+   */
+  explanation?: string | null;
+  explanation_image_path?: string | null;
   /** يملؤه الخادم عند القراءة: سؤالٌ دخل في نتيجةٍ مسلَّمة لا يُعدَّل ولا يُحذف. */
   locked?: boolean;
 }
@@ -207,6 +216,20 @@ export async function saveQuiz(draft: DraftQuiz): Promise<SaveQuizResult> {
   return (Array.isArray(data) ? data[0] : data) as SaveQuizResult;
 }
 
+/**
+ * تعديلٌ موضعيّ على الاختبار نفسه — النشر خاصّةً.
+ *
+ * ⚠️ ولا يمرّ بـ`save_quiz`: تلك تكتب الشجرة كلّها (أسئلةً وخياراتٍ ومفتاحاً)،
+ *    فاستعمالها لقلب علمٍ واحد يعيد كتابة كل شيء بلا داعٍ — ويحسب الأسئلة
+ *    المقفلة من جديد فيُبلغ المعلّم بما لم يطلبه.
+ */
+export async function updateQuiz(
+  id: string, patch: Partial<Pick<Quiz, "is_published" | "title" | "section_id" | "position">>
+): Promise<void> {
+  const { error } = await requireClient().from("quizzes").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteQuiz(id: string): Promise<void> {
   const { error } = await requireClient().from("quizzes").delete().eq("id", id);
   if (error) throw error;
@@ -234,6 +257,18 @@ export async function loadQuizDraft(quiz: Quiz): Promise<DraftQuiz> {
   const { data: answered } = ids.length
     ? await sb.from("attempt_answers").select("question_id").in("question_id", ids)
     : { data: [] };
+
+  // ⚠️ الشروح تُقرأ هنا **وجوباً** لا تحسيناً: الحفظ يُرسل الحقل دائماً،
+  //    فلو فُتح المحرّر بلا شروحٍ محمّلة لأرسلها فارغةً فمحاها كلّها. نافذةُ
+  //    الفقد نفسها التي أُصلحت في شاشة الحساب (خ-١٩)، في ثوبٍ آخر.
+  const { data: expl, error: e4 } = ids.length
+    ? await sb.from("question_explanations").select("*").in("question_id", ids)
+    : { data: [], error: null };
+  if (e4) throw e4;
+  const explOf = new Map<string, { body: string | null; image_path: string | null }>(
+    (expl ?? []).map((x) => [x.question_id as string,
+                             { body: x.body as string | null, image_path: x.image_path as string | null }])
+  );
   const lockedIds = new Set((answered ?? []).map((a) => a.question_id as string));
   const correct = new Set((key ?? []).map((k: { option_id: string }) => k.option_id));
 
@@ -249,6 +284,8 @@ export async function loadQuizDraft(quiz: Quiz): Promise<DraftQuiz> {
       prompt: (q.prompt as string) ?? "",
       prompt_image_path: q.prompt_image_path as string | null,
       points: Number(q.points),
+      explanation: explOf.get(q.id as string)?.body ?? null,
+      explanation_image_path: explOf.get(q.id as string)?.image_path ?? null,
       locked: lockedIds.has(q.id as string),
       options: (opts ?? [])
         .filter((o) => o.question_id === q.id)
