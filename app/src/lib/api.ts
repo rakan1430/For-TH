@@ -349,6 +349,90 @@ export async function listStudents(): Promise<Profile[]> {
   return data ?? [];
 }
 
+/* -------------------------- نتائج الاختبار للمعلّم ------------------------- */
+
+export interface AttemptWithStudent extends Attempt {
+  profiles: { full_name: string; grade: string | null; school: string | null; contact: string | null } | null;
+}
+
+/**
+ * محاولات اختبارٍ واحد بأسماء أصحابها — **للمعلّم**.
+ *
+ * ⚠️ ولا دالّة جديدة ولا صلاحية جديدة: سياسة `attempts_read` تسمح للمعلّم
+ *    بقراءة المحاولات أصلاً منذ ٠٠٠٥، وسياسة `profiles_read` بقراءة
+ *    الملفّات. فهذه قراءةٌ ضمن ما يملك، لا بابٌ يُفتح له.
+ *
+ * ⚠️ والطالب لو استدعاها لم يرَ إلّا محاولاته هو — تُرشّحها السياسة نفسها.
+ *    الحارس في الأسفل، وهذه الدالّة عرضٌ لا حراسة.
+ */
+export async function quizAttempts(quizId: string): Promise<AttemptWithStudent[]> {
+  const { data, error } = await requireClient()
+    .from("quiz_attempts")
+    .select("*, profiles(full_name, grade, school, contact)")
+    .eq("quiz_id", quizId)
+    .order("submitted_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as AttemptWithStudent[];
+}
+
+/**
+ * عدد المحاولات المسلَّمة لكل اختبار في المسار.
+ *
+ * ⚠️ صفٌّ لكل محاولة، ويُعدّ في الجهاز. وهو مقبولٌ اليوم (معلّمٌ واحد
+ *    وطلّابه) وغير مقبولٍ أبداً لو كبرت المنصّة — وعندها يُستبدل بدالّةٍ
+ *    تجمع في الخادم. كُتب هنا ليُقرأ حين يجيء ذلك اليوم.
+ */
+export async function submittedCounts(quizIds: string[]): Promise<Record<string, number>> {
+  if (quizIds.length === 0) return {};
+  const { data, error } = await requireClient()
+    .from("quiz_attempts").select("quiz_id")
+    .in("quiz_id", quizIds).eq("status", "submitted");
+  if (error) throw error;
+  const out: Record<string, number> = {};
+  for (const r of data ?? []) {
+    const k = (r as { quiz_id: string }).quiz_id;
+    out[k] = (out[k] ?? 0) + 1;
+  }
+  return out;
+}
+
+/* ----------------------------- حذف الحساب --------------------------------- */
+
+export interface PendingDeletion {
+  user_id: string;
+  requested_at: string;
+  purge_at: string;
+}
+
+/**
+ * ⚠️ `.eq("user_id", userId)` **ليست زينة**: سياسة الجدول تُظهر للمعلّم صفوف
+ *    كل من طلب الحذف. فبلا الترشيح يرى `maybeSingle()` أكثر من صفّ فيرفع
+ *    خطأً، وتنكسر صفحة حسابه هو. وهو الخطأ نفسه الذي وقع في `getMyProfile`
+ *    وأوقف لوحة المعلّم في الإنتاج (خ-١٨) — **ترشيحٌ لا حراسة**.
+ */
+export async function myAccountDeletion(userId: string): Promise<PendingDeletion | null> {
+  const { data, error } = await requireClient()
+    .from("account_deletions").select("*").eq("user_id", userId).maybeSingle();
+  if (error) throw error;
+  return (data as PendingDeletion | null) ?? null;
+}
+
+export async function requestAccountDeletion(): Promise<{
+  ok: boolean; reason: string; purge_at: string | null;
+}> {
+  const { data, error } = await requireClient().rpc("request_account_deletion");
+  if (error) throw error;
+  return (Array.isArray(data) ? data[0] : data) as {
+    ok: boolean; reason: string; purge_at: string | null;
+  };
+}
+
+export async function cancelAccountDeletion(): Promise<{ ok: boolean; reason: string }> {
+  const { data, error } = await requireClient().rpc("cancel_account_deletion");
+  if (error) throw error;
+  return (Array.isArray(data) ? data[0] : data) as { ok: boolean; reason: string };
+}
+
 /* ------------------------- المراجعة بعد التسليم --------------------------- */
 
 export interface ReviewRow {

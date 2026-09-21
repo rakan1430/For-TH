@@ -13,9 +13,10 @@ import { downloadCsv } from "../lib/csv";
 import { Icon } from "../components/Icon";
 import { Empty, Field, Notice } from "../components/ui";
 import { Content } from "./teacher/Content";
+import { Exams } from "./teacher/Exams";
 import { Groups } from "./teacher/Groups";
 
-type Tab = "overview" | "content" | "groups" | "requests" | "distribute";
+type Tab = "overview" | "content" | "exams" | "groups" | "requests" | "distribute";
 
 export function Teacher({ email }: { email: string }) {
   const [tab, setTab] = useState<Tab>("overview");
@@ -25,6 +26,7 @@ export function Teacher({ email }: { email: string }) {
       <div className="tabs" role="tablist">
         {([["overview", "نظرة عامّة"],
            ["content", "المحتوى"],
+           ["exams", "الاختبارات"],
            ["groups", "المجموعات"],
            ["requests", "طلبات الاشتراك"],
            ["distribute", "التوزيع"]] as const)
@@ -35,6 +37,7 @@ export function Teacher({ email }: { email: string }) {
       </div>
       {tab === "overview" ? <OverviewPane /> : null}
       {tab === "content" ? <Content /> : null}
+      {tab === "exams" ? <Exams /> : null}
       {tab === "groups" ? <Groups /> : null}
       {tab === "requests" ? <RequestsPane email={email} /> : null}
       {tab === "distribute" ? <DistributePane /> : null}

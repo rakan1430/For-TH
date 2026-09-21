@@ -40,6 +40,7 @@ export interface DemoDb {
   answer_key: { question_id: string; option_id: string }[];
   question_explanations: { question_id: string; body: string | null; image_path: string | null }[];
   saved_questions: { student_id: string; question_id: string; note: string | null; saved_at: string }[];
+  account_deletions: { user_id: string; requested_at: string; purge_at: string }[];
   groups: { id: string; track: string; name: string; color: string; position: number }[];
   group_members: { group_id: string; student_id: string }[];
   assignments: { id: string; track: string; item_type: string; item_id: string; audience: string; group_id: string | null; student_id: string | null }[];
@@ -158,6 +159,10 @@ export function seed(): DemoDb {
     question_explanations: [
       { question_id: "qq1", body: "اقسم طرفَي المعادلة على ٣، فتحصل على س = ٤.", image_path: null },
     ],
+
+    // ولا طلب حذفٍ قائم: وضع العرض يبدأ من الحالة الطبيعية، ومن أراد رؤية
+    // الشاشة الأخرى طلبها من صفحة حسابه.
+    account_deletions: [],
 
     // سؤالٌ في دفتر مراجعة الطالب: لولاه لظهر التبويب فارغاً في وضع العرض
     // ولم يُرَ منه شيء.

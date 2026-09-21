@@ -86,3 +86,12 @@ my_saved_questions()|authenticated|definer
 
 # ── اللوحة ────────────────────────────────────────────────────────────────
 teacher_overview()|authenticated|definer
+
+# ── حذف الحساب ────────────────────────────────────────────────────────────
+# ⚠️ الطلب يشترط إثبات Google خلال **ساعة** (`google_verified(1)`) ويرفض
+#    حساب المعلّم صراحةً — حسابه هو المنصّة. والإلغاء متاحٌ ما دامت مهلة
+#    الـ٤٨ ساعة قائمة.
+# ⚠️ و`private.purge_due_accounts` — التي تمحو فعلاً — **لا تُمنح لأحد**:
+#    تُنفَّذ من المجدوِل وحده. ولو كُشفت لصارت زرّ محوٍ جماعيّ على الشبكة.
+request_account_deletion()|authenticated|definer
+cancel_account_deletion()|authenticated|definer

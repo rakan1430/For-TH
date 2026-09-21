@@ -356,6 +356,34 @@ const RPC: Record<string, (args: Row) => unknown> = {
     return ordered.length;
   },
 
+  /*
+   * ⚠️ وضع العرض يُظهر الشاشة ولا يحاكي المهلة: لا مجدوِل في المتصفّح.
+   *    ولا يشترط إثبات Google — لا Google هنا أصلاً. والشريط في الأعلى
+   *    يقول إنّ هذا عرضٌ لا سلوك.
+   */
+  request_account_deletion: () => {
+    if (isTeacher()) return [{ ok: false, reason: "teacher_account", purge_at: null }];
+    if (db.account_deletions.some((d) => d.user_id === uid())) {
+      return [{ ok: false, reason: "already_requested", purge_at: null }];
+    }
+    const at = new Date(Date.now() + 48 * 3600e3).toISOString();
+    db.account_deletions.push({
+      user_id: uid(), requested_at: new Date().toISOString(), purge_at: at,
+    });
+    save();
+    return [{ ok: true, reason: "requested", purge_at: at }];
+  },
+
+  cancel_account_deletion: () => {
+    const before = db.account_deletions.length;
+    db.account_deletions = db.account_deletions.filter((d) => d.user_id !== uid());
+    if (db.account_deletions.length === before) {
+      return [{ ok: false, reason: "not_pending" }];
+    }
+    save();
+    return [{ ok: true, reason: "cancelled" }];
+  },
+
   save_quiz: (a) => {
     const q = a["p_quiz"] as Row;
     const questions = (q["questions"] as Row[]) ?? [];
@@ -548,6 +576,7 @@ export function makeDemoClient() {
         }
         if (table === "sections") return visible(arr as never, "section") as Row[];
         if (table === "profiles") return arr.filter((r) => r["id"] === uid());
+        if (table === "account_deletions") return arr.filter((r) => r["user_id"] === uid());
         if (table === "subscriptions" || table === "subscription_requests" || table === "quiz_attempts") {
           return arr.filter((r) => r["student_id"] === uid());
         }

@@ -3,7 +3,8 @@ import type { Session } from "@supabase/supabase-js";
 import { DEMO, isConfigured, onSession, supabase } from "./lib/supabase";
 import { readNext, stripNext } from "./lib/oauth";
 import {
-  amITeacher, activeTracks, ensureProfile, getMyProfile, isProfileComplete, mySubscriptions,
+  amITeacher, ensureProfile, getMyProfile, isProfileComplete, myAccountDeletion,
+  mySubscriptions, activeTracks, type PendingDeletion as PendingRow,
 } from "./lib/api";
 import { takeName } from "./lib/pending-name";
 import { startPresence, stopPresence } from "./lib/presence";
@@ -22,6 +23,7 @@ import { Student } from "./screens/Student";
 import { QuizRunner } from "./screens/QuizRunner";
 import { Teacher } from "./screens/Teacher";
 import { Account } from "./screens/Account";
+import { PendingDeletion } from "./screens/PendingDeletion";
 
 export default function App() {
   const route = useRoute();
@@ -30,6 +32,7 @@ export default function App() {
   const [isTeacher, setIsTeacher] = useState(false);
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [pendingDel, setPendingDel] = useState<PendingRow | null>(null);
   const [complete, setComplete] = useState(true);
   /*
    * ⚠️ «لم تُقرأ بعد» ≠ «لا توجد». ولولا هذا العلم لرُسمت الشاشات ببياناتٍ
@@ -105,12 +108,14 @@ export default function App() {
     prepare
       .then(() => Promise.all([
         amITeacher(), mySubscriptions(), isProfileComplete(), getMyProfile(userId),
+        myAccountDeletion(userId),
       ]))
-      .then(([t, s, done, prof]) => {
+      .then(([t, s, done, prof, del]) => {
         setComplete(done);
         setProfile(prof);
         setIsTeacher(t);
         setSubs(s);
+        setPendingDel(del);
         const live = activeTracks(s);
         if (live.length > 0 && live[0]) setTrack(live[0]);
         setLoaded(true);
@@ -147,6 +152,19 @@ export default function App() {
    *    ناقص. فلو أُزيلت هذه الشاشة كلّها لما استطاع أحدٌ الاشتراك ببياناتٍ
    *    ناقصة — وذلك هو الفرق بين شاشةٍ تُخفي وقاعدةٍ تمنع.
    */
+  /*
+   * ⚠️ قبل بوّابة إكمال الملفّ: حسابٌ قيد الحذف **مخفيّ في القاعدة**، فلا
+   *    يقرأ محتوى ولا يقدّم طلباً. ولولا هذه الشاشة لرأى موقعاً فارغاً بلا
+   *    سبب فظنّه عطلاً. ولا تُعرض للمعلّم: القاعدة ترفض حذف حسابه أصلاً.
+   */
+  if (!isTeacher && pendingDel) {
+    return (
+      <Shell onSignOut={DEMO ? null : () => void supabase?.auth.signOut()} signedIn>
+        <PendingDeletion row={pendingDel} onCancelled={() => setPendingDel(null)} />
+      </Shell>
+    );
+  }
+
   if (!isTeacher && !complete) {
     return (
       <ProfileSetup
@@ -190,6 +208,7 @@ export default function App() {
            *    للتوّ ونعرف محتواه. وإعادة الجلب تُومض الشاشة وتُعيد رسم كل
            *    شيء لتؤكّد ما نعلمه.
            */
+          onDeletionRequested={(row) => setPendingDel(row)}
           onSaved={(d) => setProfile((prev) => prev && {
             ...prev,
             full_name: d.fullName.trim(),

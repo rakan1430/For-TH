@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { upsertMyProfile, isActive } from "../lib/api";
+import { myAccountDeletion, upsertMyProfile, isActive } from "../lib/api";
+import type { PendingDeletion } from "../lib/api";
 import { formatDate, daysUntil, countLabel } from "../lib/format";
 import { Notice, Empty } from "../components/ui";
 import { ProfileFields, digitsOf, type ProfileDraft } from "../components/ProfileFields";
 import { GoogleMark } from "../components/GoogleButton";
+import { DeleteAccount } from "../components/DeleteAccount";
 import { navigate } from "../lib/router";
 import type { Profile, Subscription } from "../lib/types";
 
@@ -19,13 +21,16 @@ const TRACK_NAME: Record<string, string> = {
  *    معنى لحقلٍ هنا يوهم أنّها تُغيَّر من عندنا. وتغييرها فعلاً يعني حساباً
  *    آخر — واشتراكك معلّقٌ بالحساب لا بالبريد وحده.
  */
-export function Account({ userId, email, profile, isTeacher, subs, onSaved }: {
+export function Account({
+  userId, email, profile, isTeacher, subs, onSaved, onDeletionRequested,
+}: {
   userId: string;
   email: string;
   profile: Profile | null;
   isTeacher: boolean;
   subs: Subscription[];
   onSaved: (draft: ProfileDraft) => void;
+  onDeletionRequested: (row: PendingDeletion) => void;
 }) {
   const [draft, setDraft] = useState<ProfileDraft>({
     fullName: profile?.full_name ?? "",
@@ -145,6 +150,18 @@ export function Account({ userId, email, profile, isTeacher, subs, onSaved }: {
             نتائجك محفوظةٌ ولا تُحذف بانتهاء الاشتراك، وتعود إليك بتجديده.
           </p>
         </section>
+      )}
+
+      {/* ── حذف الحساب: للطالب وحده ──────────────────────────────────── */}
+      {isTeacher ? null : (
+        <DeleteAccount
+          onRequested={async () => {
+            // ⚠️ تُقرأ من الخادم لا تُبنى محلّياً: موعد المحو يحسبه الخادم،
+            //    وساعةُ المتصفّح قد تخالفه بساعات فيرى الطالب موعداً كاذباً.
+            const row = await myAccountDeletion(userId).catch(() => null);
+            if (row) onDeletionRequested(row);
+          }}
+        />
       )}
     </div>
   );
