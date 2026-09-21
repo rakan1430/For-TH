@@ -38,7 +38,7 @@ select testing.ok(
 
 -- ── ٣) الطالب لا يبلغ المفتاح بأي طريق ──────────────────────────────────────
 begin;
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","email":"u22@x.test"}', true);
 set local role authenticated;
 
 select testing.denied($q$ select 1 from private.answer_key $q$,
@@ -47,21 +47,22 @@ select testing.denied($q$ select 1 from private.answer_key where question_id = '
                       'ولا صفّاً واحداً منه بسؤالٍ بعينه');
 
 -- يرى الخيارات كاملةً — ولا شيء فيها يدلّ على الصحيح
--- سؤالان × ثلاثة خيارات = ٦، وكلّها من اختبار مساره وحده
-select testing.eq(testing.count_of($q$ select 1 from public.quiz_options $q$), 6,
-                  'الطالب يرى خيارات سؤاليه الستّة، بلا إشارةٍ إلى الصحيح');
+-- ⚠️ العدّ مقصورٌ على اختبارٍ بعينه: المجّانيّة فتحت المسار الآخر كذلك
+--    (٠٠١٤)، والعدّ المطلق صار يقيس قرار التسعير لا مفتاح الإجابة. وادّعاء
+--    هذا الملفّ واحدٌ لا يتغيّر: **لا طريق من الطالب إلى الصحيح** — لا
+--    عموداً، ولا جدولاً، ولا دالّة.
 select testing.eq(testing.count_of(
   $q$ select 1 from public.quiz_options o
       join public.quiz_questions qq on qq.id = o.question_id
-      where qq.quiz_id = 'e0000000-0000-0000-0000-000000000011' $q$), 0,
-  'ولا يرى خياراً واحداً من اختبار المسار الآخر');
+      where qq.quiz_id = 'e0000000-0000-0000-0000-000000000001' $q$), 6,
+  'الطالب يرى خيارات سؤالَي الاختبار الستّة، بلا إشارةٍ إلى الصحيح');
 
 reset role;
 rollback;
 
 -- ── ٤) التصحيح يقع في القاعدة، والدرجة تتبع الإجابة فعلاً ───────────────────
 begin;
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","email":"u22@x.test"}', true);
 set local role authenticated;
 
 do $$
@@ -107,16 +108,17 @@ rollback;
 
 -- ── ٥) ولا يصحّح أحدٌ اختبار غيره ──────────────────────────────────────────
 begin;
-select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333"}', true);
+select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","email":"u33@x.test"}', true);
 set local role authenticated;
 
+-- ⚠️ كان هنا: «مشترك التحصيلي لا يبدأ اختبار القدرات». سقط بالمجّانيّة
+--    (٠٠١٤) لا بخطأ. والمقصود الآن أن يُثبَت أنّ الحارس **لم يُحذف** بل
+--    تبدّل شرطه: يبدأ الاختبار لأنّه مسجَّل، ويُردّ لو لم يكن.
 do $$
 declare r record;
 begin
-  -- مشترك التحصيلي يحاول بدء اختبار القدرات
   select * into r from public.start_attempt('e0000000-0000-0000-0000-000000000001');
-  perform testing.eq(r.ok, false, 'مشترك التحصيلي لا يبدأ اختبار القدرات');
-  perform testing.eq(r.reason, 'no_subscription', 'والسبب معلَن صراحةً: لا اشتراك');
+  perform testing.ok(r.ok, 'مجّاناً: يبدأ اختبار المسار الآخر — لا حاجز اشتراك');
 end $$;
 
 reset role;

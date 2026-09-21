@@ -1,22 +1,26 @@
 \echo ''
-\echo '  انتهاء الاشتراك، والزائر المجهول'
-\echo '  «وعند انتهائه يتوقّف وصول الطالب للمحتوى — ولا تُحذف نتائجه.»'
-\echo '  والإغلاق من القاعدة، لا بإخفاء زرٍّ في الواجهة.'
+\echo '  حدّ الاشتراك المنتهي، والزائر المجهول'
+\echo '  المحتوى مجّانيّ الآن، لكنّ آلة الاشتراك تبقى مفحوصة — يوم يعود التسعير.'
 \echo ''
 
 -- ── من انتهى اشتراكه أمس ────────────────────────────────────────────────────
 -- انتهى **أمس** لا منذ سنة: الحدّ الدقيق هو ما يكشف خطأ `<` مقابل `<=`.
+--
+-- ⚠️ ولم يعد انتهاؤه يقطع المحتوى عنه — المنصّة مجّانيّة (٠٠١٤). فما يُقاس
+--    هنا الآن هو **الآلة** لا أثرها: `has_active_subscription` تحسب الحدّ
+--    بدقّة، فيومَ يُعاد وصلُها بـ`may_read_content` يعود القطع صحيحاً من
+--    أوّل يوم. وحذفُ هذا الفحص كان سيترك الحدّ بلا حارسٍ حتى يعود التسعير،
+--    وهو أسوأ وقتٍ لاكتشاف خطأٍ في مقارنة تاريخ.
 begin;
-select set_config('request.jwt.claims', '{"sub":"44444444-4444-4444-4444-444444444444"}', true);
+select set_config('request.jwt.claims', '{"sub":"44444444-4444-4444-4444-444444444444","email":"u44@x.test"}', true);
 set local role authenticated;
 
-select testing.eq(public.has_active_subscription('qudurat'), false, 'المنتهي: اشتراكه غير ساري');
-select testing.eq(testing.count_of($q$ select 1 from public.banks     $q$), 0, 'المنتهي: صفر بنك');
-select testing.eq(testing.count_of($q$ select 1 from public.resources $q$), 0, 'المنتهي: صفر ملفّ');
-select testing.eq(testing.count_of($q$ select 1 from public.quizzes   $q$), 0, 'المنتهي: صفر اختبار');
-select testing.eq(testing.count_of($q$ select 1 from public.sections  $q$), 0, 'المنتهي: صفر قسم');
+select testing.eq(public.has_active_subscription('qudurat'), false,
+                  'انتهى أمس: الدالّة تقول «غير ساري» — والحدّ مقيسٌ باليوم');
+select testing.ok(testing.count_of($q$ select 1 from public.banks $q$) > 0,
+                  'ومع ذلك يرى المحتوى: المنصّة مجّانيّة، والقطع لم يعد مربوطاً بالاشتراك');
 
--- لكنّه لا يُمحى: حسابه قائم، وصفّ اشتراكه المنتهي محفوظ بتاريخه
+-- وحسابه وسجلّه لا يُمحيان
 select testing.eq(testing.count_of($q$ select 1 from public.profiles $q$), 1,
                   'المنتهي: ملفّه الشخصي باقٍ — انتهاء الاشتراك ليس حذفاً');
 select testing.eq(testing.count_of($q$ select 1 from public.subscriptions $q$), 1,

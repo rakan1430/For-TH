@@ -12,7 +12,7 @@ select '0a000000-0000-0000-0000-00000000000f', '66666666-6666-6666-6666-66666666
        p.id, 'طالب بلا اشتراك', 'أول ثانوي', '0500000005', 'transfer', 'receipts/66/r.jpg'
 from public.plans p where p.track='qudurat' and p.period='quarterly';
 
-select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111"}', true);
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","email":"u11@x.test"}', true);
 set local role authenticated;
 
 do $$

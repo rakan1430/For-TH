@@ -18,7 +18,7 @@ const REFUSAL: Record<string, string> = {
   not_open_yet: "لم يُفتح الاختبار بعد.",
   past_due: "انتهى موعد تسليم هذا الاختبار.",
   attempts_exhausted: "استنفدت عدد المحاولات المسموح بها.",
-  subscription_expired: "انتهى اشتراكك، فلا يمكن حفظ الإجابة ولا تسليمها.",
+  quiz_closed: "سحب المعلّم هذا الاختبار، فلا يمكن حفظ الإجابة ولا تسليمها.",
   already_submitted: "سُلِّمت هذه المحاولة من قبل.",
 };
 

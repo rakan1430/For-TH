@@ -25,6 +25,17 @@
 is_teacher()|authenticated|definer
 has_active_subscription(track_t)|authenticated|definer
 is_assigned(item_type_t,uuid)|authenticated|definer
+# `may_read_content` تُعرّف حقّ القراءة في موضعٍ واحد — مجّانيّ الآن، ويوم
+# يعود التسعير يُبدَّل سطرٌ فيها لا ستّ سياسات تفترق.
+# و`is_visible`: منشورٌ بلا توزيع للجميع، وبتوزيعٍ للمستهدَفين.
+may_read_content(track_t)|authenticated|definer
+is_visible(item_type_t,uuid)|authenticated|definer
+# و`bank_open`: ما في وعاءٍ يرث نشرَ وعائه وحدودَ توزيعه.
+bank_open(uuid)|authenticated|definer
+# و`quiz_readable`: شرط وصول الطالب إلى اختبار — **تعريفٌ واحد** تقرؤه
+# سياسة الصفوف ودوالّ المحاولة معاً، فلا يفترقان. وتأخذ الأعمدة وسائطَ لا
+# قراءةً من الجدول، وإلّا دارت السياسة على نفسها.
+quiz_readable(uuid,track_t,boolean,uuid)|authenticated|definer
 
 # ── الهويّة ────────────────────────────────────────────────────────────────
 # ⚠️ الوحيدتان هنا بـ`invoker` لا `definer`، وذلك مقصود: تقرآن رمز المستدعي

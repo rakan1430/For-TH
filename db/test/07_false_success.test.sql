@@ -8,7 +8,7 @@
 \echo ''
 
 begin;
-select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111"}', true);
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","email":"u11@x.test"}', true);
 set local role authenticated;
 
 do $$
@@ -68,7 +68,7 @@ rollback;
 
 -- ── الطلب المعلّق المكرَّر: تُقرأ الحالة أوّلاً ويُقال ما جرى ────────────────
 begin;
-select set_config('request.jwt.claims', '{"sub":"66666666-6666-6666-6666-666666666666"}', true);
+select set_config('request.jwt.claims', '{"sub":"66666666-6666-6666-6666-666666666666","email":"u66@x.test"}', true);
 set local role authenticated;
 
 do $$

@@ -6,7 +6,7 @@
 -- كان `retention` عموداً يُعرض ولا يفعل شيئاً، فيُعاد المؤقّت بلا حدّ
 -- كالمسجَّل تماماً. هذا الفحص يحرس الفرق.
 begin;
-select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111"}', true);
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","email":"u11@x.test"}', true);
 set local role authenticated;
 
 do $$
@@ -34,7 +34,7 @@ begin
 end $$;
 
 reset role;
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","email":"u22@x.test"}', true);
 set local role authenticated;
 
 do $$
@@ -58,7 +58,7 @@ rollback;
 
 -- ── ٢) المسجَّل يبقى بلا حدّ — وإلا كان الإصلاح قد كسر النوع الآخر ──────────
 begin;
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","email":"u22@x.test"}', true);
 set local role authenticated;
 do $$
 declare a record; s record;
@@ -76,7 +76,7 @@ rollback;
 -- لو حُذف لفقدت إجابته معناها؛ ولو بُدّلت خياراته لصارت درجته محسوبةً على
 -- سؤالٍ غير الذي رآه.
 begin;
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","email":"u22@x.test"}', true);
 set local role authenticated;
 do $$
 declare a record; s record;
@@ -89,7 +89,7 @@ begin
 end $$;
 
 reset role;
-select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111"}', true);
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","email":"u11@x.test"}', true);
 set local role authenticated;
 
 do $$
@@ -156,7 +156,7 @@ rollback;
 
 -- ── ٤) رفضٌ صريح لاختبارٍ لا يُصحَّح ────────────────────────────────────────
 begin;
-select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111"}', true);
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","email":"u11@x.test"}', true);
 set local role authenticated;
 
 do $$
@@ -187,7 +187,7 @@ rollback;
 
 -- ── ٥) الترتيب: لا اسم جدولٍ يأتي من العميل ────────────────────────────────
 begin;
-select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111"}', true);
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","email":"u11@x.test"}', true);
 set local role authenticated;
 
 select testing.eq(
@@ -209,7 +209,7 @@ rollback;
 
 -- ── ٦) والطالب لا يؤلّف ─────────────────────────────────────────────────────
 begin;
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","email":"u22@x.test"}', true);
 set local role authenticated;
 
 select testing.denied(

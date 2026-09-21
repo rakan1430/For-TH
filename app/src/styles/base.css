@@ -207,15 +207,23 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: var(--u) 0; }
 .brand { display: flex; align-items: center; gap: var(--u-half); font-family: var(--font-title); font-weight: 800; }
 
 /*
- * ⚠️ على الشاشات الضيّقة يُطوى **اسم** المنصّة وتبقى علامتها. صار الشريط
- *    يحمل تبويبين وزرَّين بعد إضافة «حسابي»، فكان الاسم ينكسر سطرين ويدفع
- *    ما بعده. والعلامة وحدها تكفي للعودة إلى الرئيسية، والاسم ظاهرٌ في كل
- *    شاشةٍ أخرى — فلا يضيع شيء.
+ * ⚠️⚠️ كنتُ أُخفي **اسم** المنصّة على الجوّال وأُبقي العلامة، حلّاً لازدحام
+ *    الشريط. وردّ المالك حاسم: الاسم هو العلامة التجارية، ولا يُخفى على
+ *    الجهاز الذي يفتح منه أكثرُ الطلّاب. **وإخفاء ما لا يسع ليس تصميماً.**
+ *
+ *    فالحلّ بتصغير ما يُصغَّر: الاسم يبقى بخطٍّ أصغر ولا ينكسر سطرين، وتُضيَّق
+ *    الحشوات، ويبقى هدف اللمس ٤٤ بكسل فأكثر.
  */
-@media (max-width: 460px) {
+@media (max-width: 520px) {
   .appbar__inner { padding-inline: var(--u-half); gap: var(--u-qtr); }
-  .brand > span { display: none; }
-  .tab { padding-inline: var(--u-qtr); }
+  .brand { gap: var(--u-qtr); min-width: 0; }
+  .brand > span {
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tab { padding-inline: var(--u-qtr); font-size: 14px; }
 }
 
 .tabs { display: flex; gap: var(--u-qtr); flex-wrap: wrap; }

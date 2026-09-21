@@ -22,7 +22,7 @@ select testing.ok(
 
 -- ── والسلوك: ثلاث محاولاتٍ متتالية، كلٌّ بدرجتها ───────────────────────────
 begin;
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","email":"u22@x.test"}', true);
 set local role authenticated;
 
 do $$
@@ -68,7 +68,7 @@ rollback;
 
 -- ── التسليم مرّتين لنفس المحاولة: رفضٌ صريح لا كتابةٌ صامتة ────────────────
 begin;
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","email":"u22@x.test"}', true);
 set local role authenticated;
 
 do $$

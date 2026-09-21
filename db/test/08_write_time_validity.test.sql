@@ -1,29 +1,34 @@
 \echo ''
 \echo '  الصلاحية تُفحص لحظة الكتابة — البند ٧'
-\echo '  «تبويب قديم مفتوح على جهاز طالب يمكن أن يُسلّم إلى محتوىً أُغلق أو'
-\echo '   اشتراكٍ انتهى.» فنُعيد الحالة: يبدأ وهو مشترك، ويُسلّم وقد انتهى.'
+\echo '  «تبويب قديم مفتوح على جهاز طالب يمكن أن يُسلّم إلى محتوىً أُغلق.»'
+\echo '  فنُعيد الحالة: يبدأ والاختبار منشور، ويُسلّم وقد سحبه المعلّم.'
 \echo ''
 
+-- ⚠️⚠️ كان هذا الملفّ يُعيد حالة «بدأ وهو مشترك، وسلّم وقد انتهى اشتراكه».
+--    وسقط الاشتراك بالمجّانيّة (٠٠١٤) — فكاد البند ٧ يفقد أسنانه: لم يبق
+--    شرطٌ **يتغيّر** بين البدء والتسليم، فصار الحارس يفحص ما لا يتبدّل.
+--
+--    فنُقل إلى ما يتبدّل فعلاً: المعلّم يسحب نشر اختبارٍ اكتشف فيه خطأً،
+--    والطالب تبويبُه مفتوحٌ منذ ساعة. والتسليم يجب أن يُردّ.
+
 begin;
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","email":"u22@x.test"}', true);
 set local role authenticated;
 
 do $$
 declare a record;
 begin
   select * into a from public.start_attempt('e0000000-0000-0000-0000-000000000001');
-  perform testing.ok(a.ok, 'المحاولة تبدأ والاشتراك ساري');
-  -- نحفظ رقم المحاولة لنُكمل عليها بعد سحب الاشتراك
+  perform testing.ok(a.ok, 'المحاولة تبدأ والاختبار منشور');
   create temporary table _t_attempt on commit drop as select a.attempt_id as id;
 end $$;
 
--- ينقضي الاشتراك بين اللحظتين (كأن انتهى وقتُه، أو سحبه المعلّم)
+-- يسحب المعلّم نشر الاختبار بين اللحظتين
 reset role;
-update public.subscriptions
-   set is_revoked = true
- where student_id = '22222222-2222-2222-2222-222222222222' and track = 'qudurat';
+update public.quizzes set is_published = false
+ where id = 'e0000000-0000-0000-0000-000000000001';
 
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","email":"u22@x.test"}', true);
 set local role authenticated;
 
 do $$
@@ -36,20 +41,22 @@ begin
                        'option_id',  '09000000-0000-0000-0000-000000000002')));
 
   -- ⚠️ لو كان الفحص عند فتح الصفحة وحدها لمرّ هذا التسليم ولَسُجّلت درجة
-  --    لطالبٍ لا حقّ له في المحتوى أصلاً.
-  perform testing.eq(s.ok, false, 'التسليم بعد انتهاء الاشتراك مرفوض');
-  perform testing.eq(s.reason, 'subscription_expired', 'والسبب معلَن');
+  --    على اختبارٍ سحبه المعلّم لخطأٍ فيه.
+  perform testing.eq(s.ok, false, 'التسليم بعد سحب النشر مرفوض');
+  perform testing.eq(s.reason, 'quiz_closed', 'والسبب معلَن');
 
   -- والحفظ المرحلي كذلك، لا التسليم وحده
   select * into s from public.save_answer(aid,
     'f0000000-0000-0000-0000-000000000002', '09000000-0000-0000-0000-000000000011');
-  perform testing.eq(s.ok, false, 'حفظ إجابةٍ بعد انتهاء الاشتراك مرفوض أيضاً');
-  perform testing.eq(s.reason, 'subscription_expired', 'وبنفس السبب المعلَن');
+  perform testing.eq(s.ok, false, 'حفظ إجابةٍ بعد سحب النشر مرفوض أيضاً');
+  perform testing.eq(s.reason, 'quiz_closed', 'وبنفس السبب المعلَن');
 end $$;
 
--- والمحتوى نفسه احتجب من القاعدة، لا بإخفاء زرٍّ
-select testing.eq(testing.count_of($q$ select 1 from public.banks $q$), 0,
-                  'وبعد السحب: صفر بنك — الإغلاق من القاعدة');
+-- والاختبار نفسه احتجب من القاعدة، لا بإخفاء زرٍّ
+select testing.eq(
+  testing.count_of($q$ select 1 from public.quizzes
+                        where id = 'e0000000-0000-0000-0000-000000000001' $q$), 0,
+  'وبعد السحب: الاختبار غير مرئيّ — الإغلاق من القاعدة');
 
 reset role;
 rollback;
@@ -57,7 +64,7 @@ rollback;
 -- ── ونتائجه السابقة لا تُحذف ───────────────────────────────────────────────
 -- «وعند انتهائه يتوقّف وصول الطالب للمحتوى — ولا تُحذف نتائجه.»
 begin;
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","email":"u22@x.test"}', true);
 set local role authenticated;
 
 do $$
@@ -73,7 +80,7 @@ reset role;
 update public.subscriptions set is_revoked = true
  where student_id = '22222222-2222-2222-2222-222222222222' and track = 'qudurat';
 
-select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222"}', true);
+select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","email":"u22@x.test"}', true);
 set local role authenticated;
 
 select testing.eq(testing.count_of($q$ select 1 from public.quiz_attempts $q$), 1,
