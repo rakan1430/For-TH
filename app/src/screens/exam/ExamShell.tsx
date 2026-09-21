@@ -8,6 +8,8 @@ import {
 } from "../../lib/exam";
 import type { Option, Question } from "../../lib/types";
 import type { ReviewRow } from "../../lib/api";
+import { Scratchpad } from "../../components/Scratchpad";
+import type { Stroke } from "../../lib/scratch";
 
 /**
  * شاشة الاختبار — واجهةٌ **واحدة** لكل اختبارات المنصّة.
@@ -44,6 +46,15 @@ export function ExamShell(p: ExamProps) {
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [font, setFont] = useState<FontStep>(DEFAULT_FONT_STEP);
   const [sideOpen, setSideOpen] = useState(false);
+  /*
+   * ⚠️ مسودّةٌ **لكل سؤال** لا واحدةٌ للاختبار: الطالب يعود إلى سؤالٍ تركه
+   *    فيجد عمله كما تركه. ولو كانت واحدة لوجد فوقها حساب سؤالٍ آخر.
+   *
+   * ⚠️ وتعيش في الذاكرة وحدها: ورقة شطبٍ لا تُرسل ولا تُصحَّح ولا تُحفظ
+   *    (`lib/scratch.ts`).
+   */
+  const [pads, setPads] = useState<Record<string, Stroke[]>>({});
+  const [padOpen, setPadOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const reviewing = p.review !== null;
@@ -174,6 +185,22 @@ export function ExamShell(p: ExamProps) {
 
           <span className="spacer" />
 
+          {q ? (
+            <button
+              type="button"
+              className={padOpen ? "btn btn--sm" : "btn btn--quiet btn--sm"}
+              aria-pressed={padOpen}
+              onClick={() => setPadOpen((v) => !v)}
+            >
+              <Icon name="edit" size={16} />
+              مسودّة
+              {/* علامةٌ صامتة: في السؤال عملٌ سابق، فلا يظنّه ضاع */}
+              {(pads[q.id]?.length ?? 0) > 0 ? (
+                <span aria-hidden="true" style={{ color: "var(--gold)" }}>•</span>
+              ) : null}
+            </button>
+          ) : null}
+
           {/* ⚠️ ثلاث حالات لا تدرّجٌ حرّ: أزرارٌ ثلاثة أوضح من شريطٍ لا يعرف
               الطالب أين يقف منه. */}
           <div className="row exam__font" role="group" aria-label="حجم الخطّ">
@@ -188,6 +215,10 @@ export function ExamShell(p: ExamProps) {
           </div>
         </div>
 
+        {/* ⚠️ غلافٌ موضعيّ للمسودّة وحدها: تغطّي السؤال ولا تغطّي الشريط
+            العلويّ ولا أزرار التنقّل. فيقلّب الطالب الأسئلة ومسودّته مفتوحة،
+            ولا يبقى محبوساً في لوحٍ لا يرى منه رقم سؤاله ولا وقته. */}
+        <div className="exam__body">
         <div className="exam__scroll" ref={scrollRef}>
           {q ? (
             <div className="exam__q" style={{ fontSize: `${FONT_SIZES[font]}px` }}>
@@ -241,6 +272,16 @@ export function ExamShell(p: ExamProps) {
           ) : (
             <p className="muted">لا أسئلة في هذا الاختبار.</p>
           )}
+        </div>
+
+        {padOpen && q ? (
+          <Scratchpad
+            key={q.id}
+            strokes={pads[q.id] ?? []}
+            onChange={(next) => setPads((m) => ({ ...m, [q.id]: next }))}
+            onClose={() => setPadOpen(false)}
+          />
+        ) : null}
         </div>
 
         <div className="exam__foot">

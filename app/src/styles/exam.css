@@ -130,6 +130,10 @@
 .exam__main { display: flex; flex-direction: column; overflow: hidden; }
 .exam__bar {
   display: flex; align-items: center; gap: var(--u-half);
+  /* ⚠️ `wrap` على الشريط لا على مجموعة الخطّ: بدونه تخرج الأزرار عن العرض
+     فيقصّها `overflow: hidden` — قِيس على جوّال ٣٩٠ فظهر «A+» وحده وغاب
+     أخواه. والانكسار سطراً كاملاً أصدق من زرٍّ مقصوص. */
+  flex-wrap: wrap;
   padding: var(--u-qtr) var(--u-half);
   border-bottom: 1px solid var(--border);
   background: var(--surface);
@@ -137,6 +141,9 @@
 .exam__counter {
   font-family: var(--font-mono); font-variant-numeric: tabular-nums;
   font-size: 14px; color: var(--text-2);
+  /* ⚠️ «السؤال ١ من ٣» سطرٌ واحد: انكساره إلى سطرين يرفع الشريط العلويّ
+     ويأكل من الشاشة الضيّقة ما هو أحوج إليه. */
+  white-space: nowrap;
 }
 
 /* ⚠️ مؤقّتٌ في الشريط العلوي للهاتف وحده: على الشاشة العريضة يظهر في
@@ -146,8 +153,13 @@
 
 /* ⚠️ «A-» و«A+» تنعكسان في سياقٍ عربيّ فتصيران «-A» و«+A»: الخوارزمية
    ثنائية الاتجاه تضع العلامة على الطرف الخطأ. فيُثبَّت اتّجاه المجموعة. */
-.exam__font { direction: ltr; }
-.exam__scroll { flex: 1; overflow-y: auto; padding: var(--u); }
+/* ⚠️ `direction: ltr` لأنّ «A-» و«A+» **رمزٌ يُرى لا نصٌّ يُقرأ**: المحرف
+   المحايد (+ و−) في سياقٍ عربيّ يُلحق بالاتّجاه المحيط فينقلب إلى «−A».
+   ⚠️ و`nowrap` قيسَ على الجوّال: بدونه تتكدّس الأزرار الثلاثة سطراً سطراً
+      فيصير الشريط العلويّ ١٤٥ بكسلاً — سُدسُ الشاشة لثلاثة أزرارٍ صغيرة. */
+.exam__font { direction: ltr; flex-wrap: nowrap; }
+.exam__body { position: relative; flex: 1; min-height: 0; display: flex; }
+.exam__scroll { flex: 1; min-height: 0; overflow-y: auto; padding: var(--u); }
 
 /* ⚠️⚠️ درسٌ من خطأ وقع فعلاً: `max-width` بلا `margin-inline: auto` — في
    صفحة RTL يلتصق العمود المحدود بأقصى اليمين ويُترك على يساره فراغٌ واسع،
@@ -234,3 +246,35 @@
   .exam__side { transition: none; }
 }
 @media (min-width: 861px) { .exam__side-toggle { display: none; } }
+
+/* ---- لوح المسودّة ------------------------------------------------------- */
+/* ⚠️ يغطّي منطقة السؤال وحدها (`exam__body`) لا الشاشة كلّها: يبقى الشريط
+   العلويّ بعدّاد الأسئلة، وأزرار «السابق/التالي»، والشريط الجانبي بالمؤقّت.
+   فينتقل الطالب بين الأسئلة ومسودّته مفتوحة، ولا يفقد الوقت من عينه. */
+.pad {
+  position: absolute; inset: 0;
+  z-index: 4;
+  display: flex; flex-direction: column;
+  background: var(--surface);
+}
+.pad__bar {
+  display: flex; align-items: center; gap: var(--u-qtr);
+  flex-wrap: wrap;
+  padding: var(--u-half);
+  border-bottom: 1px solid var(--border);
+}
+/* على الشاشة الضيّقة تُطوى الجملة التفسيرية: الأزرار أولى بالمساحة،
+   والمعنى نفسه مكتوبٌ في مكانٍ آخر. */
+@media (max-width: 560px) {
+  .pad__note { display: none; }
+}
+/* القماش يرث لون النصّ، ومنه يأخذ لون الحبر في السمتين */
+.pad__canvas {
+  flex: 1; min-height: 0;
+  width: 100%;
+  color: var(--text-1);
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 28px,
+    var(--surface);
+  cursor: crosshair;
+}
