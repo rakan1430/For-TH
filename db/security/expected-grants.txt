@@ -72,5 +72,17 @@ start_attempt(uuid)|authenticated|definer
 save_answer(uuid,uuid,uuid)|authenticated|definer
 submit_attempt(uuid,jsonb)|authenticated|definer
 
+# ── المراجعة بعد التسليم ──────────────────────────────────────────────────
+# ⚠️ `attempt_review` هي **المخرج الوحيد** لمفتاح الإجابة إلى الشبكة في
+#    المشروع كلّه. وشرطها في `may_review_question`: سلّم المستدعي محاولةً
+#    في اختبارٍ يحوي السؤال. ولا تقبل معرّف طالبٍ وسيطاً — تسأل عن
+#    المستدعي وحده، وإلّا صارت بابَ استكشافٍ لمحاولات غيره.
+may_review_question(uuid)|authenticated|definer
+attempt_review(uuid)|authenticated|definer
+# ودفتر الطالب: يحفظ ما يحقّ له مراجعته وحده، ولا يراه المعلّم.
+save_question(uuid,text)|authenticated|definer
+unsave_question(uuid)|authenticated|definer
+my_saved_questions()|authenticated|definer
+
 # ── اللوحة ────────────────────────────────────────────────────────────────
 teacher_overview()|authenticated|definer
