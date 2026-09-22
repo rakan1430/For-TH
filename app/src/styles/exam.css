@@ -278,3 +278,24 @@
     var(--surface);
   cursor: crosshair;
 }
+
+/* ---- لوح الكتابة بخطّ اليد (شرح الحلّ) --------------------------------- */
+/* ⚠️ ليس غطاءً كمسودّة الاختبار: هذا يعيش **داخل النموذج**، فوق حقل الشرح
+   وتحت أزراره. ولهذا `relative` بارتفاعٍ محدود لا `absolute; inset: 0`. */
+.pad--paper {
+  position: relative;
+  inset: auto;
+  height: min(55vh, 340px);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+/* ⚠️⚠️ ورقٌ أبيض وحبرٌ داكن **في السمتين**: ما يُرسم هنا يُحفظ صورةً يراها
+   الطالب في الوضعين، فلو تبع ألوان السمة لاختفى في إحداهما. والمسطرة
+   باهتةٌ كدفترٍ حقيقيّ. */
+.pad--paper .pad__canvas {
+  background:
+    repeating-linear-gradient(#0000 0 27px, #C9D4E0 27px 28px),
+    #FFFFFF;
+  color: #16202A;
+}

@@ -5,6 +5,9 @@ import type { Track } from "../../lib/types";
 import { Icon } from "../../components/Icon";
 import { Field, Notice } from "../../components/ui";
 import { Sortable, DragHandle } from "../../components/Sortable";
+import { Scratchpad } from "../../components/Scratchpad";
+import { StoredImage } from "../../components/StoredImage";
+import type { Stroke } from "../../lib/scratch";
 
 export function emptyQuiz(track: Track, bankId: string | null, position: number): DraftQuiz {
   return {
@@ -220,6 +223,16 @@ function QuestionCard({
   onRemove: (() => void) | null;
 }) {
   const [uploading, setUploading] = useState(false);
+  const [imgError, setImgError] = useState<string | null>(null);
+  /*
+   * ⚠️ لوح الكتابة بخطّ اليد — طلب المعلّم: «مربّعٌ بسيط يكتب فيه بالقلم
+   *    بخطّ يده، ثمّ يُحفظ». والخطوط محلّيةٌ هنا ولا تُحفظ في القاعدة:
+   *    المحفوظ هو **الصورة** الناتجة، في نفس الحقل الذي تُرفع إليه صورة
+   *    الحلّ. فلا جدول جديد ولا سياسة جديدة، ويعمل عرضُها للطالب من أوّل
+   *    يوم لأنّ مسار القراءة قائمٌ منذ ٠٠١٦.
+   */
+  const [penOpen, setPenOpen] = useState(false);
+  const [ink, setInk] = useState<Stroke[]>([]);
   const locked = Boolean(question.locked);
 
   function setOption(oi: number, patch: Partial<DraftQuestion["options"][number]>) {
@@ -376,8 +389,12 @@ function QuestionCard({
             className="textarea mono" rows={2}
             value={question.explanation ?? ""}
             onChange={(e) => onPatch({ explanation: e.target.value })}
-            placeholder="اشرح الخطوات، أو ارفع صورةً بخطّ يدك" />
+            placeholder="اشرح الخطوات نصّاً — أو اكتبها بخطّ يدك في اللوح أدناه" />
         </Field>
+
+        {/* ⚠️ الخطأ يُعلَن: رفعٌ يفشل بصمتٍ يجعل المعلّم يظنّ أنّه أرفق
+            حلّاً ولم يُرفق — ولا يكتشفه إلّا الطالب. */}
+        {imgError ? <Notice kind="error">{imgError}</Notice> : null}
 
         <div className="row">
           <label className={question.explanation_image_path ? "btn btn--sm" : "btn btn--quiet btn--sm"}
@@ -390,12 +407,25 @@ function QuestionCard({
               onChange={async (e) => {
                 const f = e.target.files?.[0];
                 if (!f) return;
-                setUploading(true);
+                setUploading(true); setImgError(null);
                 try {
                   onPatch({ explanation_image_path: await uploadQuestionImage(track, f) });
+                } catch (err) {
+                  setImgError(err instanceof Error ? err.message : "تعذّر رفع الصورة.");
                 } finally { setUploading(false); e.target.value = ""; }
               }} />
           </label>
+
+          {/* ⚠️ زرٌّ ثالث لا بديلٌ عن الرفع: المعلّم على حاسوبٍ يرفع صورةً
+              ممسوحة، وعلى لوحٍ بقلمٍ يكتب مباشرةً. والوجهتان حقلٌ واحد. */}
+          <button type="button"
+                  className={penOpen ? "btn btn--sm" : "btn btn--quiet btn--sm"}
+                  aria-expanded={penOpen}
+                  onClick={() => { setPenOpen((v) => !v); setImgError(null); }}>
+            <Icon name="edit" size={16} />
+            {penOpen ? "إغلاق اللوح" : "اكتب الحلّ بخطّ يدك"}
+          </button>
+
           {question.explanation_image_path ? (
             <button type="button" className="btn btn--quiet btn--sm"
                     onClick={() => onPatch({ explanation_image_path: null })}
@@ -408,6 +438,41 @@ function QuestionCard({
             <span className="subtle">الشرح وحده قابلٌ للتعديل في سؤالٍ له نتائج.</span>
           ) : null}
         </div>
+
+        {penOpen ? (
+          <>
+            <Scratchpad
+              variant="paper"
+              strokes={ink}
+              onChange={setInk}
+              busy={uploading}
+              onClose={() => setPenOpen(false)}
+              onSave={async (png) => {
+                setUploading(true); setImgError(null);
+                try {
+                  // ⚠️ اسمٌ بامتدادٍ صريح: الرافع يشتقّ الامتداد من الاسم،
+                  //    و`Blob` بلا اسم يُحفظ بلا امتدادٍ فلا يُعرض صورةً.
+                  const file = new File([png], "handwriting.png", { type: "image/png" });
+                  onPatch({ explanation_image_path: await uploadQuestionImage(track, file) });
+                  setPenOpen(false);
+                } catch (err) {
+                  setImgError(err instanceof Error ? err.message : "تعذّر حفظ الرسم.");
+                } finally { setUploading(false); }
+              }}
+            />
+            <p className="subtle" style={{ margin: 0 }}>
+              اكتب بالقلم أو بإصبعك، ثمّ اضغط «حفظ الرسم». يُحفظ صورةً في خانة
+              صورة الحلّ — ولتعديله لاحقاً أعد كتابته.
+            </p>
+          </>
+        ) : null}
+
+        {/* ⚠️ معاينةٌ لما أُرفق: المعلّم يحتاج أن **يرى** أنّ خطّ يده حُفظ،
+            لا أن يُخبَر بذلك. */}
+        {question.explanation_image_path ? (
+          <StoredImage bucket="question-images" path={question.explanation_image_path}
+                       alt="صورة حلّ السؤال" maxHeight={240} />
+        ) : null}
       </div>
     </div>
   );

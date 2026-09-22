@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import {
-  beginStroke, extendStroke, normalize, undo, type Stroke,
+  beginStroke, exportSize, extendStroke, normalize, paintStrokes, strokesToPng, undo,
+  HANDWRITING_INK, type Stroke,
 } from "../lib/scratch";
+
+/** أقصى ضلعٍ للصورة المصدَّرة — كافٍ لخطّ اليد، وخفيفٌ على جوّال الطالب. */
+const MAX_EXPORT_SIDE = 1600;
 
 /**
  * لوح المسودّة — ورقة الشطب أثناء الاختبار.
@@ -16,11 +20,23 @@ import {
  * ⚠️ و`setPointerCapture` لازم: بدونه يفلت الخطّ متى خرج الإصبع عن حدود
  *    القماش وهو مضغوط، فينقطع الرسم في منتصفه.
  */
-export function Scratchpad({ strokes: initial, onChange, onClose }: {
+export function Scratchpad({
+  strokes: initial, onChange, onClose, variant = "screen", onSave, busy = false,
+}: {
   strokes: Stroke[];
   onChange: (next: Stroke[]) => void;
   onClose: () => void;
+  /**
+   * ⚠️ `screen`: حبرٌ بلون السمة على أرضيّتها — مسودّة الاختبار، تُرى ولا
+   *    تُحفظ. و`paper`: ورقةٌ بيضاء وحبرٌ داكن — لأنّ ما يُكتب فيها **يُحفظ
+   *    صورةً** يراها الطالب في السمتين، وحبرُ السمة يختفي في إحداهما.
+   */
+  variant?: "screen" | "paper";
+  /** وجودها يُظهر زرّ الحفظ. تستلم الرسم صورةَ PNG على ورقٍ أبيض. */
+  onSave?: (png: Blob) => void | Promise<void>;
+  busy?: boolean;
 }) {
+  const paper = variant === "paper";
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [erasing, setErasing] = useState(false);
   const drawing = useRef(false);
@@ -76,38 +92,43 @@ export function Scratchpad({ strokes: initial, onChange, onClose }: {
       const ctx = el.getContext("2d");
       if (!ctx) return;
       ctx.clearRect(0, 0, el.width, el.height);
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
 
-      const ink = getComputedStyle(el).getPropertyValue("color") || "#000";
-      for (const s of strokes) {
-        if (s.points.length === 0) continue;
-        ctx.globalCompositeOperation = s.erase ? "destination-out" : "source-over";
-        ctx.strokeStyle = ink;
-        ctx.lineWidth = (s.erase ? 18 : 2.5) * dpr;
-        ctx.beginPath();
-        // النِّسب تُضرب في الحجم الحالي — ولهذا خُزّنت نِسباً
-        ctx.moveTo(s.points[0]!.x * el.width, s.points[0]!.y * el.height);
-        for (const pt of s.points.slice(1)) {
-          ctx.lineTo(pt.x * el.width, pt.y * el.height);
-        }
-        // نقطةٌ واحدة: خطٌّ بلا طولٍ لا يُرسم، فتُرسم دائرةً صغيرة
-        if (s.points.length === 1) {
-          ctx.lineTo(s.points[0]!.x * el.width + 0.1, s.points[0]!.y * el.height);
-        }
-        ctx.stroke();
-      }
-      ctx.globalCompositeOperation = "source-over";
+      // ⚠️ الحبر في وضع الورق **ثابتٌ** لا من السمة: هو نفسه الذي يُصدَّر،
+      //    فما يراه المعلّم هو ما يُحفظ بالضبط.
+      const ink = paper
+        ? HANDWRITING_INK
+        : (getComputedStyle(el).getPropertyValue("color") || "#000");
+      paintStrokes(ctx, strokes, el.width, el.height, { ink }, dpr);
     }
 
     paint();
     const ro = new ResizeObserver(paint);
     ro.observe(canvas);
     return () => ro.disconnect();
-  }, [strokes]);
+  }, [strokes, paper]);
 
   function at(e: React.PointerEvent<HTMLCanvasElement>) {
     return normalize(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
+  }
+
+  /**
+   * يصدّر ما رُسم صورةً ويسلّمها للأعلى.
+   *
+   * ⚠️ الأبعاد تُؤخذ من **القماش نفسه لحظة الحفظ**: الإحداثيات معياريّة،
+   *    فلا تعرف نسبة الورقة إلّا منه. ولو صُدِّرت بنسبةٍ مفترضة لانمطّ
+   *    خطّ اليد أو انضغط.
+   */
+  async function save(): Promise<void> {
+    const el = canvasRef.current;
+    if (!el || !onSave) return;
+    const rect = el.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const png = await strokesToPng(
+      latest.current,
+      exportSize(rect.width, rect.height, dpr, MAX_EXPORT_SIDE),
+      dpr
+    );
+    if (png) await onSave(png);
   }
 
   /** رفع الإصبع: هنا وحده تصعد الخطوط إلى شاشة الاختبار. */
@@ -118,7 +139,7 @@ export function Scratchpad({ strokes: initial, onChange, onClose }: {
   }
 
   return (
-    <div className="pad">
+    <div className={paper ? "pad pad--paper" : "pad"}>
       <div className="pad__bar">
         <button type="button"
                 className={erasing ? "btn btn--sm" : "btn btn--quiet btn--sm"}
@@ -138,8 +159,18 @@ export function Scratchpad({ strokes: initial, onChange, onClose }: {
           <Icon name="trash" size={16} /> مسح
         </button>
         <span className="spacer" />
-        <span className="subtle pad__note">مسودّةٌ لك وحدك — لا تُرسل ولا تُصحَّح</span>
-        <button type="button" className="btn btn--quiet btn--sm" onClick={onClose}>
+        {onSave ? null : (
+          <span className="subtle pad__note">مسودّةٌ لك وحدك — لا تُرسل ولا تُصحَّح</span>
+        )}
+        {onSave ? (
+          <button type="button" className="btn btn--primary btn--sm"
+                  onClick={() => void save()}
+                  disabled={busy || strokes.length === 0}>
+            <Icon name="check" size={16} /> {busy ? "…يُحفظ" : "حفظ الرسم"}
+          </button>
+        ) : null}
+        <button type="button" className="btn btn--quiet btn--sm" onClick={onClose}
+                disabled={busy}>
           <Icon name="x" size={16} /> إغلاق
         </button>
       </div>

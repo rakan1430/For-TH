@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { beginStroke, extendStroke, isEmpty, normalize, undo, type Stroke } from "./scratch";
+import {
+  beginStroke, exportSize, extendStroke, isEmpty, normalize, undo, type Stroke,
+} from "./scratch";
 
 const RECT = { left: 100, top: 50, width: 200, height: 400 };
 
@@ -46,5 +48,29 @@ describe("الخطوط", () => {
   it("والفراغ فراغ", () => {
     expect(isEmpty([])).toBe(true);
     expect(isEmpty([{ points: [{ x: 0, y: 0 }], erase: false }])).toBe(false);
+  });
+});
+
+describe("exportSize", () => {
+  it("تحفظ نسبة الأبعاد كما رآها الكاتب", () => {
+    const s = exportSize(400, 200, 2, 4000);
+    expect(s.width / s.height).toBeCloseTo(2, 5);
+  });
+
+  it("وتضاعف بمقياس الجهاز ما دامت دون الحدّ", () => {
+    expect(exportSize(400, 200, 2, 4000)).toEqual({ width: 800, height: 400 });
+  });
+
+  it("⚠️ وتقصّ عند الحدّ الأعلى بلا أن تشوّه النسبة", () => {
+    // ٢٠٠٠×١٠٠٠ بمقياس ٣ = ٦٠٠٠×٣٠٠٠، والحدّ ١٦٠٠
+    const s = exportSize(2000, 1000, 3, 1600);
+    expect(Math.max(s.width, s.height)).toBe(1600);
+    expect(s.width / s.height).toBeCloseTo(2, 5);
+  });
+
+  it("ولا تُعيد صفراً مهما كان المدخل", () => {
+    const s = exportSize(0, 0, 0, 1600);
+    expect(s.width).toBeGreaterThan(0);
+    expect(s.height).toBeGreaterThan(0);
   });
 });
